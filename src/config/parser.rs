@@ -24,8 +24,8 @@ pub fn load_config(path: impl AsRef<Path>) -> Result<UnifiDeclarativeConfig> {
 
 /// Parse YAML config.
 pub fn parse_yaml(contents: &str) -> Result<UnifiDeclarativeConfig> {
-    let value: serde_yml::Value =
-        serde_yml::from_str(contents).map_err(|e| UnifiError::ConfigError(e.to_string()))?;
+    let value: serde_yaml_ng::Value =
+        serde_yaml_ng::from_str(contents).map_err(|e| UnifiError::ConfigError(e.to_string()))?;
     let json_value = serde_json::to_value(value).map_err(UnifiError::JsonError)?;
     parse_json_value(json_value)
 }
