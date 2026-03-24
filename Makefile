@@ -8,7 +8,7 @@ RUST_TOOLCHAIN ?= stable
 DOCKER_IMAGE ?= $(shell basename $(CURDIR))
 DOCKER_TAG ?= latest
 DOCKER_REGISTRY ?= ghcr.io/threatflux
-BINARY_NAME ?= rust-cicd-template
+BINARY_NAME ?= unifi-cli
 BINARY_PACKAGE ?=
 SBOM_MANIFEST_PATH ?= Cargo.toml
 PUBLISH_PACKAGES ?=
@@ -147,8 +147,14 @@ test-features: ## Test feature combinations
 .PHONY: test-features-full
 test-features-full: ## Test full feature powerset
 	@echo "$(CYAN)Testing full feature powerset...$(NC)"
-	@cargo hack check --workspace --feature-powerset --no-dev-deps
+	@cargo hack check --workspace --feature-powerset --no-dev-deps --exclude-features integration-tests
 	@echo "$(GREEN)Feature powerset passed!$(NC)"
+
+.PHONY: integration-test
+integration-test: ## Run UniFi integration tests (requires controller)
+	@echo "$(CYAN)Running integration tests...$(NC)"
+	@$(CARGO) test --test integration_tests --features integration-tests -- --ignored
+	@echo "$(GREEN)Integration tests passed!$(NC)"
 
 .PHONY: coverage
 coverage: ## Generate code coverage report

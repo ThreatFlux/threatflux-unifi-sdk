@@ -1,12 +1,10 @@
 # Security Policy
 
-This repository is a template. If you generate a new repository from it, replace any remaining placeholders and update the repository-specific contact and advisory links before the first release.
-
 ## Supported Versions
 
 | Version | Supported |
 | ------- | --------- |
-| 0.3.x   | :white_check_mark: |
+| 0.4.x   | :white_check_mark: |
 
 ## Reporting a Vulnerability
 

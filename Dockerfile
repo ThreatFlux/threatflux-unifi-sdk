@@ -6,7 +6,7 @@ FROM rust:1.94-bookworm AS builder
 ARG VERSION=0.0.0
 ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
-ARG BINARY_NAME=rust-cicd-template
+ARG BINARY_NAME=unifi-cli
 ARG BINARY_PACKAGE=
 ARG SBOM_MANIFEST_PATH=Cargo.toml
 
@@ -41,10 +41,10 @@ FROM debian:bookworm-slim AS runtime
 ARG VERSION=0.0.0
 ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
-ARG BINARY_NAME=rust-cicd-template
+ARG BINARY_NAME=unifi-cli
 
-LABEL org.opencontainers.image.title="ThreatFlux Application" \
-      org.opencontainers.image.description="ThreatFlux Rust Application" \
+LABEL org.opencontainers.image.title="ThreatFlux UniFi SDK" \
+      org.opencontainers.image.description="UniFi SDK CLI for UDM Pro and UniFi OS device automation" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \

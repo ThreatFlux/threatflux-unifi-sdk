@@ -1,0 +1,28 @@
+{
+  "name": "ThreatFlux UniFi SDK (Self-Hosted UniFi)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/threatflux-unifi-sdk,type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/threatflux-unifi-sdk",
+  "postStartCommand": "sudo service unifi start || sudo service unifi status",
+  "forwardPorts": [8443, 8080, 3478, 10001, 6789],
+  "portsAttributes": {
+    "8443": { "label": "UniFi Console (HTTPS)" },
+    "8080": { "label": "UniFi Inform" },
+    "3478": { "label": "STUN" },
+    "10001": { "label": "Device Discovery" },
+    "6789": { "label": "Speed Test" }
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  }
+}

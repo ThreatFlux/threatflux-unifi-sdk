@@ -198,7 +198,7 @@ jobs:
         run: cargo check --workspace --all-features
 
       - name: Check feature combinations
-        run: cargo hack check --workspace --feature-powerset --no-dev-deps
+        run: cargo hack check --workspace --feature-powerset --no-dev-deps --exclude-features integration-tests
 
   docs:
     name: Documentation

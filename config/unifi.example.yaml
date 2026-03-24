@@ -1,0 +1,254 @@
+unifi:
+  host: 192.168.1.1
+  username: ${UNIFI_USERNAME}
+  password: ${UNIFI_PASSWORD}
+  site: default
+  verify_ssl: false
+  timeout_secs: 30
+
+networks:
+  - name: Default
+    purpose: corporate
+    vlan_enabled: false
+    subnet: 192.168.1.0/24
+    gateway: 192.168.1.1
+    dhcp:
+      enabled: true
+      start: 192.168.1.100
+      stop: 192.168.1.254
+      lease: 86400
+      dns:
+        - 1.1.1.1
+        - 8.8.8.8
+    domain: home.local
+    igmp_snooping: false
+
+  - name: IoT
+    purpose: corporate
+    vlan_enabled: true
+    vlan: 10
+    subnet: 192.168.10.0/24
+    gateway: 192.168.10.1
+    dhcp:
+      enabled: true
+      start: 192.168.10.100
+      stop: 192.168.10.254
+
+  - name: Servers
+    purpose: corporate
+    vlan_enabled: true
+    vlan: 20
+    subnet: 192.168.20.0/24
+    gateway: 192.168.20.1
+    dhcp:
+      enabled: true
+      start: 192.168.20.100
+      stop: 192.168.20.200
+
+  - name: Guest
+    purpose: guest
+    vlan_enabled: true
+    vlan: 30
+    subnet: 192.168.30.0/24
+    gateway: 192.168.30.1
+    dhcp:
+      enabled: true
+      start: 192.168.30.100
+      stop: 192.168.30.254
+
+firewall_groups:
+  - name: ThreatFlux Servers
+    type: address-group
+    members:
+      - 192.168.20.10
+      - 192.168.20.11
+      - 192.168.20.12
+
+  - name: RFC1918
+    type: address-group
+    members:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+
+  - name: Web Ports
+    type: port-group
+    members:
+      - "80"
+      - "443"
+
+  - name: ThreatFlux Ports
+    type: port-group
+    members:
+      - "8080"
+      - "3000"
+      - "5432"
+
+firewall:
+  wan_in:
+    - name: Allow Established/Related
+      action: accept
+      protocol: all
+      state_established: true
+      state_related: true
+      rule_index: 2001
+
+    - name: Drop Invalid
+      action: drop
+      protocol: all
+      state_invalid: true
+      rule_index: 2002
+      logging: true
+
+  lan_in:
+    - name: Allow IoT to Internet
+      action: accept
+      protocol: all
+      src_network: IoT
+      dst_address: "!192.168.0.0/16"
+      rule_index: 3001
+
+    - name: Block IoT to LAN
+      action: drop
+      protocol: all
+      src_network: IoT
+      dst_firewallgroup:
+        - RFC1918
+      rule_index: 3002
+
+    - name: Allow Servers to All
+      action: accept
+      protocol: all
+      src_network: Servers
+      rule_index: 3003
+
+  inter_vlan:
+    - name: Allow LAN to Servers
+      action: accept
+      protocol: all
+      src_network: Default
+      dst_network: Servers
+      rule_index: 4001
+
+    - name: Block Guest to All Internal
+      action: drop
+      protocol: all
+      src_network: Guest
+      dst_firewallgroup:
+        - RFC1918
+      rule_index: 4002
+
+port_forward:
+  - name: ThreatFlux HTTPS
+    enabled: true
+    dst_port: "443"
+    fwd: 192.168.20.10
+    fwd_port: "443"
+    proto: tcp_udp
+    log: true
+
+  - name: WireGuard VPN
+    enabled: true
+    dst_port: "51820"
+    fwd: 192.168.1.1
+    fwd_port: "51820"
+    proto: udp
+
+  - name: SSH Access
+    enabled: true
+    src:
+      limited:
+        src_ip: 203.0.113.0/24
+    dst_port: "22"
+    fwd: 192.168.20.10
+    fwd_port: "22"
+    proto: tcp
+
+traffic_rules:
+  - description: Block TikTok on IoT
+    enabled: true
+    action: block
+    matching_target:
+      app_category:
+        category_id: social-network
+    target_devices:
+      network:
+        network: IoT
+
+  - description: Rate limit Guest WiFi
+    enabled: true
+    action: limit
+    matching_target: all_traffic
+    target_devices:
+      network:
+        network: Guest
+    bandwidth_limit:
+      download_kbps: 50000
+      upload_kbps: 10000
+
+vpn:
+  wireguard:
+    name: ThreatFlux VPN
+    enabled: true
+    port: 51820
+    network: 10.10.10.0/24
+    dns:
+      - 1.1.1.1
+    clients:
+      - name: Mobile Phone
+        public_key: "abc123..."
+        assigned_ip: 10.10.10.2/32
+        allowed_ips:
+          - 192.168.0.0/16
+      - name: Laptop
+        public_key: "def456..."
+        assigned_ip: 10.10.10.3/32
+        allowed_ips:
+          - 0.0.0.0/0
+  site_to_site:
+    - name: Office VPN
+      enabled: true
+      remote_ip: 203.0.113.1
+      remote_subnets:
+        - 10.0.0.0/24
+      local_subnets:
+        - 192.168.20.0/24
+
+
+dhcp_reservations:
+  - name: ThreatFlux API Server
+    mac: "00:11:22:33:44:55"
+    ip: 192.168.20.10
+    network: Servers
+
+  - name: ThreatFlux DB Server
+    mac: "00:11:22:33:44:56"
+    ip: 192.168.20.11
+    network: Servers
+
+dns:
+  records:
+    - key: api.threatflux.local
+      value: 192.168.20.10
+      record_type: a
+    - key: db.threatflux.local
+      value: 192.168.20.11
+      record_type: a
+  upstream:
+    - 1.1.1.1
+    - 8.8.8.8
+  filtering:
+    enabled: true
+    level: family
+
+clients:
+  blocked:
+    - mac: "AA:BB:CC:DD:EE:FF"
+      note: "Unauthorized device"
+  groups:
+    - name: High Priority
+      qos_rate_max_down: -1
+      qos_rate_max_up: -1
+    - name: Low Priority
+      qos_rate_max_down: 10000
+      qos_rate_max_up: 5000
