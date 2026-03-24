@@ -362,7 +362,7 @@ async fn handle_export(connection: &ConnectionArgs, args: ExportArgs) -> anyhow:
     let export = export_config(&client).await?;
     match args.format.as_str() {
         "json" => println!("{}", serde_json::to_string_pretty(&export)?),
-        _ => println!("{}", serde_yaml::to_string(&export)?),
+        _ => println!("{}", serde_yml::to_string(&export)?),
     }
     Ok(())
 }
