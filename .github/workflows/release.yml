@@ -261,7 +261,7 @@ jobs:
         run: |
           for file in artifacts/**/*; do
             if [ -f "$file" ]; then
-              gh release upload "v${{ needs.prepare.outputs.version }}" "$file" --clobber
+              gh release upload "v${{ needs.prepare.outputs.version }}" "$file" --clobber --repo "$GITHUB_REPOSITORY"
             fi
           done
         env:
