@@ -231,3 +231,14 @@ jobs:
           else
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Release v${VERSION}" --notes-file release_notes.md
           fi
+
+      - name: Trigger release workflow
+        if: steps.publish_release_commit.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.check.outputs.next_version }}"
+          gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --field version="$VERSION" \
+            --field source_ref="v$VERSION"
