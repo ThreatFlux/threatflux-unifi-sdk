@@ -270,7 +270,7 @@ jobs:
   publish:
     name: Publish to crates.io
     needs: [prepare, build]
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     if: "!contains(needs.prepare.outputs.version, '-')"
     steps:
       - name: Checkout
