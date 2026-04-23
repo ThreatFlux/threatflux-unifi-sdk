@@ -71,7 +71,7 @@ Full API documentation is available at [docs.rs](https://docs.rs/PROJECT_NAME).
 
 ### Prerequisites
 
-- Rust 1.94.0 or later
+- Rust 1.95.0 or later
 - Additional dependencies if any
 
 ### Building

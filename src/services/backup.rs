@@ -137,7 +137,7 @@ impl<'a> BackupService<'a> {
     #[instrument(skip(self))]
     pub async fn prune(&self, keep_count: usize) -> Result<Vec<String>> {
         let mut backups = self.list().await?;
-        backups.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+        backups.sort_by_key(|backup| std::cmp::Reverse(backup.timestamp));
 
         let mut deleted = Vec::new();
         for backup in backups.into_iter().skip(keep_count) {
