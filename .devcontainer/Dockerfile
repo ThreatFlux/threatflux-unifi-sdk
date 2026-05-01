@@ -1,4 +1,4 @@
-FROM ghcr.io/threatflux/rust-cicd-template:base-rust-latest
+FROM docker.io/threatflux/rust-cicd-template:base-rust-latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
