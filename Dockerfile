@@ -10,6 +10,7 @@ ARG BINARY_NAME=unifi-cli
 ARG BINARY_PACKAGE=
 ARG SBOM_MANIFEST_PATH=Cargo.toml
 
+USER root
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     pkg-config \
@@ -43,6 +44,7 @@ ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
 ARG BINARY_NAME=unifi-cli
 
+USER root
 LABEL org.opencontainers.image.title="ThreatFlux UniFi SDK" \
       org.opencontainers.image.description="UniFi SDK CLI for UDM Pro and UniFi OS device automation" \
       org.opencontainers.image.version="${VERSION}" \
