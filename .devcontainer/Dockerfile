@@ -1,4 +1,4 @@
-FROM rust:1.94-bookworm
+FROM ghcr.io/threatflux/rust-cicd-template:base-rust-latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 
