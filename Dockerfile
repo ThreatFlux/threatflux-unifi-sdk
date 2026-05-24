@@ -10,11 +10,19 @@ ARG BINARY_NAME=unifi-cli
 ARG BINARY_PACKAGE=
 ARG SBOM_MANIFEST_PATH=Cargo.toml
 
+ARG RUST_TOOLCHAIN=stable
+ENV RUSTUP_HOME=/opt/rustup \
+    CARGO_HOME=/opt/cargo \
+    PATH=/opt/cargo/bin:$PATH
+USER root
+
 RUN apt-get update && apt-get install -y \
+    curl \
     ca-certificates \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${RUST_TOOLCHAIN} --profile minimal
 
 RUN useradd -m -u 1000 builder
 USER builder
