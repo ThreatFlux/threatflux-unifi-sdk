@@ -1,4 +1,4 @@
-FROM docker.io/threatflux/rust-cicd-template:base-rust-latest
+FROM rust:1.95-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -11,10 +11,6 @@ ENV RUSTUP_HOME=/opt/rustup \
     CARGO_HOME=/opt/cargo \
     PATH=/opt/cargo/bin:$PATH
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${RUST_TOOLCHAIN} --profile minimal
 
 RUN groupadd --gid ${USER_GID} ${USERNAME} \
     && useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} \

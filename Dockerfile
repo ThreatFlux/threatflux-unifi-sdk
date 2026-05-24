@@ -1,7 +1,7 @@
 # ThreatFlux Rust Dockerfile
 # Multi-stage build for single-crate or workspace-based applications.
 
-FROM docker.io/threatflux/rust-cicd-template:base-rust-latest AS builder
+FROM rust:1.95-bookworm AS builder
 
 ARG VERSION=0.0.0
 ARG BUILD_DATE=unknown
@@ -21,11 +21,13 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain ${RUST_TOOLCHAIN} --profile minimal
 
-RUN id -u builder >/dev/null 2>&1 || useradd -m -u 1000 builder
+RUN if ! id -u builder >/dev/null 2>&1; then \
+      useradd -m -o -u 1000 builder; \
+    fi
 USER builder
 WORKDIR /build
+RUN chown -R builder:builder /opt/rustup /opt/cargo
 
 COPY --chown=builder:builder . .
 
@@ -65,7 +67,9 @@ RUN apt-get update && apt-get install -y \
     tini \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /usr/share/doc/app \
-    && useradd -m -u 1000 app
+    && if ! id -u app >/dev/null 2>&1; then \
+         useradd -m -o -u 1000 app; \
+       fi
 
 COPY --from=builder /build/target/release/${BINARY_NAME} /usr/local/bin/app
 COPY --from=builder /build/${BINARY_NAME}-sbom.json /usr/share/doc/app/sbom.cdx.json
