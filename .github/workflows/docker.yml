@@ -23,6 +23,7 @@ env:
   REGISTRY: ghcr.io
   DOCKERHUB_REGISTRY: docker.io
   DOCKERHUB_NAMESPACE: ${{ vars.RUST_TEMPLATE_DOCKERHUB_NAMESPACE || 'threatflux' }}
+  PUBLISH_DOCKERHUB: ${{ vars.RUST_TEMPLATE_PUBLISH_DOCKERHUB || 'false' }}
   DOCKER_BUILDKIT: 1
   BINARY_NAME: ${{ vars.RUST_TEMPLATE_BINARY_NAME || 'unifi-cli' }}
   BINARY_PACKAGE: ${{ vars.RUST_TEMPLATE_BINARY_PACKAGE || '' }}
@@ -56,7 +57,11 @@ jobs:
       - name: Detect Rust toolchain version
         id: rust_toolchain
         run: |
-          TOOLCHAIN_VERSION="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*\"\\(.*\\)\"/\\1/p' rust-toolchain.toml | sed -n '1p')"
+          TOOLCHAIN_VERSION="$(sed -n 's/^channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml | sed -n '1p')"
+          if [[ -z "${TOOLCHAIN_VERSION}" ]]; then
+            echo "::error::Unable to detect Rust toolchain version from rust-toolchain.toml"
+            exit 1
+          fi
           echo "version=${TOOLCHAIN_VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Select build platforms
@@ -64,6 +69,24 @@ jobs:
         run: |
           echo "value=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
           echo "needs_qemu=true" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve image targets
+        id: image_targets
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          dockerhub_enabled=false
+          {
+            echo "images<<EOF"
+            echo "${REGISTRY}/${{ steps.lowercase.outputs.image_name }}"
+            if [[ "${GITHUB_EVENT_NAME}" != "pull_request" && "${PUBLISH_DOCKERHUB}" == "true" && -n "${DOCKERHUB_USERNAME}" && -n "${DOCKERHUB_TOKEN}" ]]; then
+              echo "${DOCKERHUB_REGISTRY}/${DOCKERHUB_NAMESPACE}/${{ steps.dockerhub_repo.outputs.name }}"
+              dockerhub_enabled=true
+            fi
+            echo "EOF"
+            echo "dockerhub_enabled=${dockerhub_enabled}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         if: steps.platforms.outputs.needs_qemu == 'true'
@@ -81,7 +104,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.image_targets.outputs.dockerhub_enabled == 'true'
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
@@ -92,9 +115,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
         with:
-          images: |
-            ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.image_name }}
-            ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_NAMESPACE }}/${{ steps.dockerhub_repo.outputs.name }}
+          images: ${{ steps.image_targets.outputs.images }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -108,9 +129,7 @@ jobs:
         id: base_meta
         uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
         with:
-          images: |
-            ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.image_name }}
-            ${{ env.DOCKERHUB_REGISTRY }}/${{ env.DOCKERHUB_NAMESPACE }}/${{ steps.dockerhub_repo.outputs.name }}
+          images: ${{ steps.image_targets.outputs.images }}
           tags: |
             type=raw,value=base-rust-${{ steps.rust_toolchain.outputs.version }}
             type=raw,value=base-rust-latest,enable={{is_default_branch}}

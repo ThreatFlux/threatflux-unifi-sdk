@@ -28,6 +28,8 @@ Set these repository variables or Makefile overrides:
 - `RUST_TEMPLATE_BINARY_PACKAGE`
 - `RUST_TEMPLATE_SBOM_MANIFEST_PATH`
 - `RUST_TEMPLATE_PUBLISH_PACKAGES`
+- `RUST_TEMPLATE_PUBLISH_DOCKERHUB`
+- `RUST_TEMPLATE_DOCKERHUB_NAMESPACE`
 
 Recommended values:
 
@@ -35,6 +37,8 @@ Recommended values:
 - `RUST_TEMPLATE_BINARY_PACKAGE`: the package that owns that binary
 - `RUST_TEMPLATE_SBOM_MANIFEST_PATH`: the manifest used for SBOM generation
 - `RUST_TEMPLATE_PUBLISH_PACKAGES`: publish order, space separated
+- `RUST_TEMPLATE_PUBLISH_DOCKERHUB`: set to `true` only when Docker Hub publishing is configured
+- `RUST_TEMPLATE_DOCKERHUB_NAMESPACE`: Docker Hub namespace for published images
 
 ## Validation
 
