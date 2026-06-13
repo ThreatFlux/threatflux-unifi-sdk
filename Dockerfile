@@ -1,7 +1,7 @@
 # ThreatFlux Rust Dockerfile
 # Multi-stage build for single-crate or workspace-based applications.
 
-FROM rust:1.96-bookworm AS builder
+FROM rust:1.96.0-bookworm AS rust-base
 
 ARG VERSION=0.0.0
 ARG BUILD_DATE=unknown
@@ -9,12 +9,18 @@ ARG VCS_REF=unknown
 ARG BINARY_NAME=unifi-cli
 ARG BINARY_PACKAGE=
 ARG SBOM_MANIFEST_PATH=Cargo.toml
+ARG OCI_IMAGE_TITLE=ThreatFlux UniFi SDK
+ARG OCI_IMAGE_DESCRIPTION=UniFi SDK CLI for UDM Pro and UniFi OS device automation
+ARG OCI_IMAGE_VENDOR=ThreatFlux
+ARG OCI_IMAGE_SOURCE=https://github.com/ThreatFlux/threatflux-unifi-sdk
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+
+FROM rust-base AS builder
 
 RUN useradd -m -u 1000 builder
 USER builder
@@ -42,14 +48,18 @@ ARG VERSION=0.0.0
 ARG BUILD_DATE=unknown
 ARG VCS_REF=unknown
 ARG BINARY_NAME=unifi-cli
+ARG OCI_IMAGE_TITLE=ThreatFlux UniFi SDK
+ARG OCI_IMAGE_DESCRIPTION=UniFi SDK CLI for UDM Pro and UniFi OS device automation
+ARG OCI_IMAGE_VENDOR=ThreatFlux
+ARG OCI_IMAGE_SOURCE=https://github.com/ThreatFlux/threatflux-unifi-sdk
 
-LABEL org.opencontainers.image.title="ThreatFlux UniFi SDK" \
-      org.opencontainers.image.description="UniFi SDK CLI for UDM Pro and UniFi OS device automation" \
+LABEL org.opencontainers.image.title="${OCI_IMAGE_TITLE}" \
+      org.opencontainers.image.description="${OCI_IMAGE_DESCRIPTION}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
-      org.opencontainers.image.vendor="ThreatFlux" \
-      org.opencontainers.image.source="https://github.com/ThreatFlux"
+      org.opencontainers.image.vendor="${OCI_IMAGE_VENDOR}" \
+      org.opencontainers.image.source="${OCI_IMAGE_SOURCE}"
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \

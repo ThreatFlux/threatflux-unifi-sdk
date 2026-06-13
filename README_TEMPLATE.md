@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/PROJECT_NAME.svg)](https://crates.io/crates/PROJECT_NAME)
 [![Documentation](https://docs.rs/PROJECT_NAME/badge.svg)](https://docs.rs/PROJECT_NAME)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/rust-1.94%2B-orange.svg)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/rust-1.96.0%2B-orange.svg)](https://www.rust-lang.org)
 [![CI](https://github.com/ThreatFlux/PROJECT_NAME/actions/workflows/ci.yml/badge.svg)](https://github.com/ThreatFlux/PROJECT_NAME/actions/workflows/ci.yml)
 [![Security](https://github.com/ThreatFlux/PROJECT_NAME/actions/workflows/security.yml/badge.svg)](https://github.com/ThreatFlux/PROJECT_NAME/actions/workflows/security.yml)
 
@@ -71,7 +71,7 @@ Full API documentation is available at [docs.rs](https://docs.rs/PROJECT_NAME).
 
 ### Prerequisites
 
-- Rust 1.95.0 or later
+- Rust 1.96.0 or later
 - Additional dependencies if any
 
 ### Building
