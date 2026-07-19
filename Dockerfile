@@ -80,5 +80,5 @@ WORKDIR /home/app
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ["/usr/local/bin/app", "--version"]
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/usr/local/bin/app"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/app"]
+CMD []
