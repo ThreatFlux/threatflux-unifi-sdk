@@ -3,7 +3,7 @@ name = "threatflux-unifi-sdk"
 version = "0.5.4"
 edition = "2024"
 rust-version = "1.96.0"
-description = "UniFi SDK for UDM Pro and UniFi OS device automation"
+description = "Unofficial async Rust SDK and CLI for UniFi Network controller automation"
 license = "MIT"
 repository = "https://github.com/ThreatFlux/threatflux-unifi-sdk"
 homepage = "https://github.com/ThreatFlux/threatflux-unifi-sdk"
@@ -13,6 +13,7 @@ keywords = ["unifi", "udm", "network", "firewall", "automation"]
 categories = ["api-bindings", "network-programming"]
 
 [features]
+# Service-name features are compatibility markers and do not currently cfg-gate code.
 default = ["full"]
 full = ["firewall", "vpn", "traffic", "clients", "devices", "dhcp", "dns"]
 firewall = []
@@ -23,6 +24,9 @@ devices = []
 dhcp = []
 dns = []
 integration-tests = []
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 anyhow = "1.0.102"

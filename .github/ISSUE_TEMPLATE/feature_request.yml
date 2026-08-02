@@ -1,5 +1,5 @@
-name: Feature Request
-description: Propose a new best practice or template capability
+name: Feature request
+description: Propose an SDK, service, model, CLI, or documentation capability
 title: "feat: "
 labels: ["enhancement"]
 body:
@@ -7,13 +7,25 @@ body:
     id: problem
     attributes:
       label: Problem
-      description: What problem does this solve?
+      description: What controller automation problem should this solve?
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposal
-      description: Describe the expected behavior or files to change.
+      label: Proposed surface
+      description: Describe the expected Rust API, model, CLI, or documentation.
     validations:
       required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Controller and API evidence
+      description: Identify tested controller/version behavior or sanitized endpoint evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and safety
+      description: Note API stability, TLS/credential handling, and destructive-operation risks.

@@ -41,6 +41,7 @@ help: ## Display this help message
 	@echo "$(YELLOW)Quick Start:$(NC)"
 	@echo "  $(GREEN)make dev-setup$(NC)       Install all development tools"
 	@echo "  $(GREEN)make template-check$(NC)  Validate bootstrap placeholders"
+	@echo "  $(GREEN)make docs-check$(NC)      Validate the documentation contract"
 	@echo "  $(GREEN)make ci$(NC)              Run all CI checks locally"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -244,7 +245,7 @@ docker-push: ## Push Docker image to registry
 	@echo "$(GREEN)Docker image pushed!$(NC)"
 
 .PHONY: pre-commit
-pre-commit: fmt-check lint test-doc ## Pre-commit checks
+pre-commit: docs-check fmt-check lint test-doc ## Pre-commit checks
 
 .PHONY: template-check
 template-check: ## Fail if template placeholders are still present
@@ -252,11 +253,17 @@ template-check: ## Fail if template placeholders are still present
 	@python3 scripts/check_template_placeholders.py
 	@echo "$(GREEN)No unresolved template placeholders found!$(NC)"
 
+.PHONY: docs-check
+docs-check: template-check ## Validate README claims, quickstart sync, and local links
+	@echo "$(CYAN)Checking documentation contract...$(NC)"
+	@python3 scripts/check_docs.py
+	@echo "$(GREEN)Documentation contract passed!$(NC)"
+
 .PHONY: ci
-ci: template-check fmt-check lint test test-features docs security ## Full CI checks
+ci: docs-check fmt-check lint test test-features docs security ## Full CI checks
 
 .PHONY: ci-quick
-ci-quick: template-check fmt-check lint check ## Quick CI checks
+ci-quick: docs-check fmt-check lint check ## Quick CI checks
 
 .PHONY: all
 all: ci coverage bench-check ## Full validation suite
@@ -268,6 +275,7 @@ release-check: ## Check release readiness
 	@$(CARGO) test --all-features
 	@$(CARGO) clippy --all-features --all-targets -- -D warnings
 	@python3 scripts/check_template_placeholders.py
+	@python3 scripts/check_docs.py
 	@echo "$(GREEN)Release readiness checks passed!$(NC)"
 
 .PHONY: clean

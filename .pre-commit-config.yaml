@@ -16,3 +16,8 @@ repos:
         entry: cargo test --doc --all-features
         language: system
         pass_filenames: false
+      - id: docs-contract
+        name: documentation contract
+        entry: make docs-check
+        language: system
+        pass_filenames: false
