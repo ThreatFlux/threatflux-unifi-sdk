@@ -22,15 +22,27 @@ fn default_timeout() -> u64 {
 }
 
 /// Connection configuration for the UniFi controller.
+///
+/// # Security
+///
+/// Deserialization defaults `verify_ssl` to `false` for compatibility.
+/// Production configuration should set it to `true` and use a trusted
+/// controller certificate.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnifiConnectionConfig {
+    /// Controller URL, hostname, or IP address.
     pub host: String,
+    /// Controller username.
     pub username: String,
+    /// Controller password.
     pub password: String,
+    /// Active site name.
     #[serde(default = "default_site")]
     pub site: String,
+    /// Whether to verify the controller's TLS certificate.
     #[serde(default)]
     pub verify_ssl: bool,
+    /// Request timeout in seconds.
     #[serde(default = "default_timeout")]
     pub timeout_secs: u64,
 }

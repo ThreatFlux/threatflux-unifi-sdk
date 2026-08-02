@@ -1,25 +1,58 @@
-name: Bug Report
-description: Report a defect in the template or generated project behavior
+name: Bug report
+description: Report a defect in the UniFi SDK, CLI, models, or documentation
 title: "fix: "
 labels: ["bug"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include passwords, cookies, tokens, private controller URLs, or
+        unredacted configuration. Report vulnerabilities through the private
+        security channel instead.
   - type: textarea
     id: summary
     attributes:
       label: Summary
-      description: Describe the bug clearly.
+      description: Describe the observed behavior and affected SDK or CLI path.
+    validations:
+      required: true
+  - type: input
+    id: sdk-version
+    attributes:
+      label: SDK version or commit
+      placeholder: "0.5.4 or commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Rust, OS, and architecture
+      placeholder: "rustc 1.96.0, Ubuntu 24.04, x86_64"
+    validations:
+      required: true
+  - type: textarea
+    id: controller
+    attributes:
+      label: Controller evidence
+      description: Controller type, UniFi Network version, and firmware version, when known.
     validations:
       required: true
   - type: textarea
     id: reproduction
     attributes:
-      label: Reproduction
-      description: Include steps, commands, and repo shape.
+      label: Minimal reproduction
+      description: Include sanitized code or CLI commands and exact steps.
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
       label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized errors
     validations:
       required: true

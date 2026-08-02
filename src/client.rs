@@ -22,6 +22,13 @@ const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_SITE: &str = "default";
 
 /// Configuration for the UniFi client.
+///
+/// # Security
+///
+/// [`Self::new`] defaults [`Self::verify_ssl`] to `false` for compatibility
+/// with self-signed controllers. This disables certificate validation. Set it
+/// to `true` for production after configuring a trusted controller
+/// certificate.
 #[derive(Debug, Clone)]
 pub struct UnifiConfig {
     /// Base URL of the UniFi controller (e.g., `https://192.168.1.1`).
@@ -32,7 +39,10 @@ pub struct UnifiConfig {
     pub password: String,
     /// Site name (defaults to "default").
     pub site: String,
-    /// Whether to verify TLS certificates (default: false for self-signed).
+    /// Whether to verify TLS certificates.
+    ///
+    /// The compatibility default is `false`; production callers should
+    /// explicitly enable verification.
     pub verify_ssl: bool,
     /// Request timeout in seconds.
     pub timeout_secs: u64,
@@ -63,7 +73,10 @@ impl UnifiConfig {
         self
     }
 
-    /// Enable or disable SSL verification.
+    /// Enable or disable TLS certificate verification.
+    ///
+    /// Passing `false` accepts invalid certificates and is unsafe on an
+    /// untrusted network.
     #[must_use]
     pub const fn with_verify_ssl(mut self, verify: bool) -> Self {
         self.verify_ssl = verify;

@@ -1,40 +1,60 @@
-# Security Policy
+# Security policy
 
-## Supported Versions
+## Supported versions
 
-| Version | Supported |
-| ------- | --------- |
-| 0.4.x   | :white_check_mark: |
+| Version or channel | Supported |
+| ------------------ | --------- |
+| Latest published release | Yes |
+| `main` | Development; security fixes may not be released yet |
+| Older releases | No |
 
-## Reporting a Vulnerability
+Security fixes target the latest published release and current development
+branch. Upgrade to the latest release before requesting a backport.
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+## Reporting a vulnerability
 
-### How to Report
+Do not report security vulnerabilities through public GitHub issues.
 
-1. **Email**: Send details to security@threatflux.ai
-2. **GitHub Security Advisories**: Use your repository Security tab to report privately
+Open a private report through the repository's
+[GitHub Security Advisories](https://github.com/ThreatFlux/threatflux-unifi-sdk/security/advisories).
 
-### What to Include
+Include:
 
-- Type of vulnerability
-- Full paths of affected source files
-- Location of affected code (tag, branch, commit, or direct URL)
-- Step-by-step reproduction instructions
-- Proof-of-concept or exploit code if possible
-- Impact assessment
+- The vulnerability type and impact
+- Affected release, commit, and source paths
+- Reproduction steps
+- A minimal proof of concept when safe
+- Any known mitigations
 
-### Response Timeline
+## Response targets
 
-- **Initial Response**: Within 48 hours
-- **Status Update**: Within 5 business days
-- **Resolution Target**: Within 90 days
+- Initial response: within 48 hours
+- Status update: within 5 business days
+- Resolution target: within 90 days
 
-### Safe Harbor
+These are targets, not disclosure deadlines. Coordinate public disclosure with
+the maintainers.
 
-We consider security research conducted in good faith to be authorized. We will not pursue legal action against researchers who:
+## Deployment security
 
-- Make good faith efforts to avoid privacy violations
+`UnifiConfig` currently disables TLS certificate verification by default.
+Production deployments should enable verification whenever a trusted
+controller certificate or certificate authority can be configured. If
+compatibility forces use of the insecure default, isolate the management
+network and explicitly accept and mitigate the resulting man-in-the-middle
+risk. See [configuration and security](docs/configuration.md) for the exact
+behavior.
+
+Do not log `UnifiConfig`: its derived `Debug` representation includes the
+password. Use a least-privilege controller account, keep credentials in a
+secret manager, and restrict management-interface access.
+
+## Safe harbor
+
+We consider security research conducted in good faith to be authorized. We will
+not pursue legal action against researchers who:
+
+- Make good-faith efforts to avoid privacy violations
 - Avoid data destruction or service disruption
 - Report vulnerabilities promptly
-- Allow reasonable time for remediation before disclosure
+- Allow reasonable remediation time before disclosure

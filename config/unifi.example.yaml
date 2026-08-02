@@ -1,9 +1,10 @@
 unifi:
-  host: 192.168.1.1
-  username: ${UNIFI_USERNAME}
-  password: ${UNIFI_PASSWORD}
+  host: "${UNIFI_HOST}"
+  username: "${UNIFI_USERNAME}"
+  password: "${UNIFI_PASSWORD}"
   site: default
-  verify_ssl: false
+  # Keep certificate verification enabled outside an isolated development lab.
+  verify_ssl: true
   timeout_secs: 30
 
 networks:
