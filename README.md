@@ -54,12 +54,16 @@ against a non-production site before deployment.
 
 ## Installation
 
-Use the crates.io release for normal applications:
+Use Cargo to add the latest published crates.io release for normal
+applications:
 
-```toml
-[dependencies]
-threatflux-unifi-sdk = "0.5"
+```bash
+cargo add threatflux-unifi-sdk
 ```
+
+Cargo writes the selected release requirement to your application's
+`Cargo.toml`, so this command remains correct when a new SDK version is
+published.
 
 Track the Git repository only when you intentionally need unreleased changes:
 
@@ -68,7 +72,8 @@ Track the Git repository only when you intentionally need unreleased changes:
 threatflux-unifi-sdk = { git = "https://github.com/ThreatFlux/threatflux-unifi-sdk", branch = "main" }
 ```
 
-A branch dependency is not reproducible over time. Pin a `rev` in production.
+A branch dependency is not reproducible over time. Before committing a
+production dependency, replace `branch = "main"` with a pinned `rev`.
 
 Install the packaged CLI from crates.io with:
 
@@ -96,7 +101,10 @@ controller.
 
 ## Quick start
 
-This example is compiled on the MSRV and stable Rust in CI.
+After adding the crate to an application, use it from Rust code as below.
+`UNIFI_HOST`, `UNIFI_USERNAME`, and `UNIFI_PASSWORD` are required at runtime;
+`UNIFI_SITE` defaults to `default`. This exact example is compiled on the MSRV
+and stable Rust in CI.
 
 <!-- BEGIN QUICKSTART -->
 ```rust

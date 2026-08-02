@@ -27,7 +27,6 @@ VERSION = re.compile(r"(?<![\w.])(\d+\.\d+(?:\.\d+)?)(?![\w.])")
 
 @dataclass(frozen=True)
 class Manifest:
-    version: str
     rust_version: str
     features: frozenset[str]
 
@@ -58,7 +57,6 @@ def read_manifest(path: Path) -> Manifest:
     package = cargo["package"]
     features = cargo.get("features", {})
     return Manifest(
-        version=str(package["version"]),
         rust_version=str(package["rust-version"]),
         features=frozenset(features),
     )
@@ -134,14 +132,20 @@ def check_features(
         )
 
 
-def check_crate_version(
-    path: Path, readme: str, manifest: Manifest, problems: list[Problem]
-) -> None:
-    expected = ".".join(manifest.version.split(".")[:2])
-    dependency = re.search(r'threatflux-unifi-sdk\s*=\s*"([^"]+)"', readme)
-    if dependency is None or dependency.group(1) != expected:
+def check_install_guidance(path: Path, readme: str, problems: list[Problem]) -> None:
+    if "cargo add threatflux-unifi-sdk" not in readme:
         problems.append(
-            Problem(path, 1, f'README dependency version must be "{expected}"')
+            Problem(path, 1, "README must use version-independent cargo add guidance")
+        )
+
+    dependency = re.search(r'(?m)^\s*threatflux-unifi-sdk\s*=\s*"[^"]+"\s*$', readme)
+    if dependency is not None:
+        add_problem(
+            problems,
+            path,
+            readme,
+            dependency.start(),
+            "README crates.io install guidance must not hard-code a version",
         )
 
 
@@ -329,7 +333,7 @@ def main() -> int:
     problems: list[Problem] = []
     check_msrv(readme_path, readme, manifest, problems)
     check_features(readme_path, readme, manifest, problems)
-    check_crate_version(readme_path, readme, manifest, problems)
+    check_install_guidance(readme_path, readme, problems)
     quickstart_path = root / "examples/quickstart.rs"
     check_quickstart(readme_path, readme, quickstart_path, problems)
     check_readme_contract(readme_path, readme, problems)
