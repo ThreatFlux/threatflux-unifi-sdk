@@ -13,6 +13,7 @@
     "SECURITY.md",
     ".github/pull_request_template.md",
     "docs/**/*.md",
+    "!README_TEMPLATE.md",
     "!docs/TEMPLATE_BOOTSTRAP_CHECKLIST.md"
   ]
 }
