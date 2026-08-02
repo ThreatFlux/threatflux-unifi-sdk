@@ -35,10 +35,11 @@ the maintainers.
 
 `UnifiConfig` currently disables TLS certificate verification by default.
 Production deployments should enable verification whenever a trusted
-controller certificate or CA can be configured. If compatibility forces use
-of the insecure default, isolate the management network and explicitly accept
-and mitigate the resulting man-in-the-middle risk. See [configuration and
-security](docs/configuration.md) for the exact behavior.
+controller certificate or certificate authority can be configured. If
+compatibility forces use of the insecure default, isolate the management
+network and explicitly accept and mitigate the resulting man-in-the-middle
+risk. See [configuration and security](docs/configuration.md) for the exact
+behavior.
 
 Do not log `UnifiConfig`: its derived `Debug` representation includes the
 password. Use a least-privilege controller account, keep credentials in a
