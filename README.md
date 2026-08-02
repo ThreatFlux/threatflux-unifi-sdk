@@ -59,7 +59,11 @@ applications:
 
 ```bash
 cargo add threatflux-unifi-sdk
+cargo add tokio --features macros,rt-multi-thread
 ```
+
+The quickstart uses Tokio's runtime macro, so the application must declare
+Tokio directly instead of relying on the SDK's transitive dependency.
 
 Cargo writes the selected release requirement to your application's
 `Cargo.toml`, so this command remains correct when a new SDK version is
@@ -91,9 +95,11 @@ self-signed certificates. Internally, this enables reqwest's
 cookies to an active network attacker.
 
 For production, install a certificate trusted by the client runtime (or trust
-the controller's issuing CA) and always call `.with_verify_ssl(true)`. Limit
-`.with_verify_ssl(false)` to an isolated, trusted development network after
-accepting the risk. Changing the library default would be compatibility
+the controller's issuing CA) and call `.with_verify_ssl(true)` whenever that is
+possible. If controller compatibility forces `.with_verify_ssl(false)`, isolate
+the management network, prevent untrusted access to it, and explicitly accept
+and mitigate the resulting man-in-the-middle risk. Never disable verification
+over an untrusted network. Changing the library default would be compatibility
 sensitive and is not part of this documentation change.
 
 See [configuration and security](docs/configuration.md) before connecting to a

@@ -23,6 +23,9 @@ REFERENCE_LINK = re.compile(
     r"^\s{0,3}\[[^\]\n]+\]:\s*(?P<target><[^>\n]+>|\S+)", re.MULTILINE
 )
 VERSION = re.compile(r"(?<![\w.])(\d+\.\d+(?:\.\d+)?)(?![\w.])")
+NUMERIC_SUPPORT_SERIES = re.compile(
+    r"(?m)^\|\s*`?(?:<\s*)?\d+\.\d+(?:\.\d+|\.x)?`?\s*\|"
+)
 
 
 @dataclass(frozen=True)
@@ -138,6 +141,17 @@ def check_install_guidance(path: Path, readme: str, problems: list[Problem]) -> 
             Problem(path, 1, "README must use version-independent cargo add guidance")
         )
 
+    tokio_command = "cargo add tokio --features macros,rt-multi-thread"
+    if tokio_command not in readme:
+        problems.append(
+            Problem(
+                path,
+                1,
+                "README quickstart install guidance must add Tokio's macros and "
+                "multi-thread runtime features",
+            )
+        )
+
     dependency = re.search(r'(?m)^\s*threatflux-unifi-sdk\s*=\s*"[^"]+"\s*$', readme)
     if dependency is not None:
         add_problem(
@@ -146,6 +160,40 @@ def check_install_guidance(path: Path, readme: str, problems: list[Problem]) -> 
             readme,
             dependency.start(),
             "README crates.io install guidance must not hard-code a version",
+        )
+
+
+def check_security_policy(path: Path, security: str, problems: list[Problem]) -> None:
+    heading = re.search(r"^## Supported versions\s*$", security, re.MULTILINE)
+    if heading is None:
+        problems.append(
+            Problem(path, 1, "security policy must describe supported versions")
+        )
+        return
+
+    next_heading = NEXT_H2.search(security, heading.end())
+    end = next_heading.start() if next_heading else len(security)
+    policy = security[heading.end() : end]
+
+    required = ("Latest published release", "`main`", "Older releases")
+    for phrase in required:
+        if phrase not in policy:
+            problems.append(
+                Problem(
+                    path,
+                    line_number(security, heading.start()),
+                    f"security support policy must contain: {phrase}",
+                )
+            )
+
+    numeric_series = NUMERIC_SUPPORT_SERIES.search(policy)
+    if numeric_series is not None:
+        add_problem(
+            problems,
+            path,
+            security,
+            heading.end() + numeric_series.start(),
+            "security support policy must not hard-code a numeric release series",
         )
 
 
@@ -330,10 +378,13 @@ def main() -> int:
 
     readme_path = root / "README.md"
     readme = readme_path.read_text(encoding="utf-8")
+    security_path = root / "SECURITY.md"
+    security = security_path.read_text(encoding="utf-8")
     problems: list[Problem] = []
     check_msrv(readme_path, readme, manifest, problems)
     check_features(readme_path, readme, manifest, problems)
     check_install_guidance(readme_path, readme, problems)
+    check_security_policy(security_path, security, problems)
     quickstart_path = root / "examples/quickstart.rs"
     check_quickstart(readme_path, readme, quickstart_path, problems)
     check_readme_contract(readme_path, readme, problems)

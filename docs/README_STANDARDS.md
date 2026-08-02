@@ -49,7 +49,8 @@ make docs-check
 The checker verifies:
 
 - README MSRV claims match `package.rust-version`.
-- The crates.io dependency matches the crate's current major/minor version.
+- The install guidance uses release-independent `cargo add` commands and does
+  not hard-code a crates.io dependency version.
 - The Cargo feature table matches `[features]` exactly.
 - The README quickstart is identical to `examples/quickstart.rs`.
 - The secure TLS call remains in the quickstart and example configuration.
@@ -58,6 +59,7 @@ The checker verifies:
 - Obsolete binary, compatibility, feature-gating, and re-login claims do not
   return.
 - Local Markdown links resolve inside the repository.
+- The security support policy does not hard-code a numeric release series.
 - Template placeholders do not leak into published files.
 
 The documentation workflow also lints maintained Markdown, checks external

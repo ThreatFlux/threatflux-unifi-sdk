@@ -2,10 +2,14 @@
 
 ## Supported versions
 
-| Version | Supported |
-| ------- | --------- |
-| `0.5.x` | Yes |
-| `< 0.5` | No |
+| Version or channel | Supported |
+| ------------------ | --------- |
+| Latest published release | Yes |
+| `main` | Development; security fixes may not be released yet |
+| Older releases | No |
+
+Security fixes target the latest published release and current development
+branch. Upgrade to the latest release before requesting a backport.
 
 ## Reporting a vulnerability
 
