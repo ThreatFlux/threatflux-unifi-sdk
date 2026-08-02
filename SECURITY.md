@@ -11,11 +11,8 @@
 
 Do not report security vulnerabilities through public GitHub issues.
 
-Use one of these private channels:
-
-1. Email [security@threatflux.ai](mailto:security@threatflux.ai).
-2. Open a private report through the repository's
-   [GitHub Security Advisories](https://github.com/ThreatFlux/threatflux-unifi-sdk/security/advisories).
+Open a private report through the repository's
+[GitHub Security Advisories](https://github.com/ThreatFlux/threatflux-unifi-sdk/security/advisories).
 
 Include:
 
@@ -37,9 +34,11 @@ the maintainers.
 ## Deployment security
 
 `UnifiConfig` currently disables TLS certificate verification by default.
-Production users must configure a trusted controller certificate and enable
-verification explicitly. See
-[configuration and security](docs/configuration.md) for the exact behavior.
+Production deployments should enable verification whenever a trusted
+controller certificate or CA can be configured. If compatibility forces use
+of the insecure default, isolate the management network and explicitly accept
+and mitigate the resulting man-in-the-middle risk. See [configuration and
+security](docs/configuration.md) for the exact behavior.
 
 Do not log `UnifiConfig`: its derived `Debug` representation includes the
 password. Use a least-privilege controller account, keep credentials in a
