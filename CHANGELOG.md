@@ -38,6 +38,14 @@ This file records changes that need more context than a commit subject.
   workflow at `v0.7.6`. That version stops a release whose `Cargo.toml`
   version is lower than the latest release tag before anything is written,
   and its dry run never dispatches the downstream release workflows.
+- The container image moves off Debian 12 (bookworm). It builds on
+  `rust:1.99.0-trixie` and runs on `gcr.io/distroless/cc-debian13:nonroot`,
+  both pinned by digest. The runtime image has no shell or package manager,
+  runs as the distroless `nonroot` user (UID/GID 65532 instead of the former
+  `app` user, UID 1000) with `/data` as its working directory, and keeps
+  `tini` as PID 1, the `--version` health check, the CycloneDX SBOM at
+  `/usr/share/doc/app/sbom.cdx.json` and the `linux/amd64` and `linux/arm64`
+  platforms. `unifi-cli` is also on `PATH` next to `/usr/local/bin/app`.
 
 ## [0.7.5]
 

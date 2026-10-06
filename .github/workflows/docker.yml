@@ -197,6 +197,41 @@ jobs:
             BINARY_PACKAGE=${{ env.BINARY_PACKAGE }}
             SBOM_MANIFEST_PATH=${{ env.SBOM_MANIFEST_PATH }}
 
+      # The runtime image is distroless (no shell), so the CLI itself is the
+      # smoke test: it must start, print its version and help, and run as a
+      # non-root user. PRs test the exported amd64 image before merge; pushes
+      # test every pushed platform by digest (QEMU runs the non-native ones).
+      - name: Smoke test image
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_IMAGE: ${{ steps.lowercase.outputs.image_name }}:scan
+          PUSHED_IMAGE: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.image_name }}@${{ steps.build.outputs.digest }}
+          PLATFORMS: ${{ steps.platforms.outputs.value }}
+        run: |
+          set -euo pipefail
+          smoke_test() {
+            local platform="$1" image="$2" user
+            echo "::group::Smoke test ${platform}"
+            docker run --rm --platform "${platform}" "${image}" --version
+            docker run --rm --platform "${platform}" "${image}" --help > /dev/null
+            user="$(docker image inspect --format '{{.Config.User}}' "${image}")"
+            if [[ -z "${user}" || "${user%%:*}" == "0" || "${user%%:*}" == "root" ]]; then
+              echo "::error::${image} (${platform}) runs as root (USER '${user}')"
+              exit 1
+            fi
+            echo "Runs as USER ${user}"
+            echo "::endgroup::"
+          }
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            docker load -i /tmp/image.tar
+            smoke_test linux/amd64 "${PR_IMAGE}"
+          else
+            IFS=',' read -ra platforms <<< "${PLATFORMS}"
+            for platform in "${platforms[@]}"; do
+              smoke_test "${platform}" "${PUSHED_IMAGE}"
+            done
+          fi
+
       - name: Upload image artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
