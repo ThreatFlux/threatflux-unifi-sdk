@@ -24,6 +24,10 @@ This file records changes that need more context than a commit subject.
 - `release.yml` keeps the notes auto-release already wrote on an existing
   GitHub Release, creates a missing tag at the commit it builds, and refuses
   to release an existing tag that points at a different commit.
+- `auto-release.yml` uses the `ThreatFlux/github_actions` reusable release
+  workflow at `v0.7.6`. That version stops a release whose `Cargo.toml`
+  version is lower than the latest release tag before anything is written,
+  and its dry run never dispatches the downstream release workflows.
 
 ## [0.7.5]
 
