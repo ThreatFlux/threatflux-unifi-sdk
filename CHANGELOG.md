@@ -34,6 +34,11 @@ This file records changes that need more context than a commit subject.
   already on crates.io skips the publish instead of failing, and dry runs
   request no token. The workflow token is read-only except where a job writes
   the GitHub Release.
+- `release.yml` no longer has a `source_ref` dispatch input. Every job builds
+  the commit the run was started on: the pushed tag, or the branch or tag
+  picked with `gh workflow run release.yml --ref <ref>`. To rebuild an
+  existing tag, dispatch on that tag. Auto Release already dispatches on the
+  new tag and never passed the input.
 - `auto-release.yml` uses the `ThreatFlux/github_actions` reusable release
   workflow at `v0.7.6`. That version stops a release whose `Cargo.toml`
   version is lower than the latest release tag before anything is written,
