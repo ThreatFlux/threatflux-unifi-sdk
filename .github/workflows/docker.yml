@@ -210,11 +210,15 @@ jobs:
         run: |
           set -euo pipefail
           smoke_test() {
-            local platform="$1" image="$2" user
+            local platform="$1" image="$2" container user
             echo "::group::Smoke test ${platform}"
             docker run --rm --platform "${platform}" "${image}" --version
             docker run --rm --platform "${platform}" "${image}" --help > /dev/null
-            user="$(docker image inspect --format '{{.Config.User}}' "${image}")"
+            # Read USER from a container of this platform: inspecting a
+            # multi-platform reference can report another platform's config.
+            container="$(docker create --platform "${platform}" "${image}")"
+            user="$(docker container inspect --format '{{.Config.User}}' "${container}")"
+            docker rm "${container}" > /dev/null
             if [[ -z "${user}" || "${user%%:*}" == "0" || "${user%%:*}" == "root" ]]; then
               echo "::error::${image} (${platform}) runs as root (USER '${user}')"
               exit 1
@@ -229,6 +233,11 @@ jobs:
             IFS=',' read -ra platforms <<< "${PLATFORMS}"
             for platform in "${platforms[@]}"; do
               smoke_test "${platform}" "${PUSHED_IMAGE}"
+              # The runner's classic image store keeps one platform per
+              # reference and refuses to pull another platform over the same
+              # index digest ("cannot overwrite digest"), so drop this one
+              # before the next platform is pulled.
+              docker image rm "${PUSHED_IMAGE}" > /dev/null
             done
           fi
 
