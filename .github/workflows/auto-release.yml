@@ -39,14 +39,21 @@ jobs:
       actions: write
       contents: write
       pull-requests: write
-    uses: ThreatFlux/github_actions/.github/workflows/reusable-auto-release.yml@8633e03be96acd076b36bfdf7bec2345e6614c5c # v0.7.6
+    uses: ThreatFlux/github_actions/.github/workflows/reusable-auto-release.yml@eb9f3cf78c3899be0c4c9323d5cc86de5e1fdee8 # v0.7.7
     with:
       bump: ${{ github.event.inputs.version_bump || 'auto' }}
       # inputs.* is empty for workflow_run events, so automatic runs stay real.
       dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
       required-workflows: CI,Security
+      # The release commit and tag are pushed with a threatflux-automation
+      # GitHub App installation token. An App-pushed tag is an ordinary push,
+      # so release.yml and docker.yml start from their own `push: tags`
+      # triggers and the reusable workflow dispatches nothing
+      # (dispatch-on-app-token stays false, which avoids running them twice).
+      # The dispatch list below only applies if the release falls back to
+      # GITHUB_TOKEN, whose tag push starts no workflows.
+      github-app-id: ${{ vars.TF_AUTOMATION_APP_ID }}
       dispatch-workflows: release.yml,docker.yml
       dispatch-version-workflow: release.yml
-
-    # secrets:
-    #   release-token: ${{ secrets.RELEASE_TOKEN }}
+    secrets:
+      github-app-private-key: ${{ secrets.TF_AUTOMATION_APP_PRIVATE_KEY }}
