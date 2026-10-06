@@ -1778,7 +1778,7 @@ dependencies = [
 
 [[package]]
 name = "threatflux-unifi-sdk"
-version = "0.5.4"
+version = "0.7.5"
 dependencies = [
  "anyhow",
  "chrono",
