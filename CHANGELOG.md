@@ -6,6 +6,23 @@ This file records changes that need more context than a commit subject.
 
 ## [Unreleased]
 
+### Fixed
+
+- `release.yml` writes the Windows archive's `.sha256` file with an LF line
+  ending, like the Unix archives' files. The `0.7.6`
+  `unifi-cli-windows-amd64.zip.sha256` asset ends in CRLF, so
+  `shasum -a 256 -c` and `sha256sum -c` report the archive as missing; check
+  it with `tr -d '\r' < unifi-cli-windows-amd64.zip.sha256 | shasum -a 256 -c`
+  (the hash itself is correct).
+
+## [0.7.6] - 2026-10-06
+
+### Notes
+
+- `0.7.6` is the first crates.io release since `0.5.4`, and the first
+  published with trusted publishing (release run 37514948389 at `f71b0e9`).
+  crates.io has no `0.6.x` or `0.7.0`-`0.7.5` versions.
+
 ### Added
 
 - `release.yml` and `auto-release.yml` accept a `dry_run` dispatch input.
