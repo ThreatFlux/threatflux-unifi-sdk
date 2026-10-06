@@ -50,9 +50,13 @@ This file records changes that need more context than a commit subject.
   `GITHUB_TOKEN`. The App-pushed tag starts `release.yml` and `docker.yml`
   through their `push: tags` triggers, so Auto Release no longer dispatches
   them as well and each runs once per release. The release commit on `main`
-  now also runs the push workflows (CI, Security, Docker). When neither the
-  variable nor the secret is available, Auto Release falls back to
-  `GITHUB_TOKEN` and dispatches both workflows on the new tag as before.
+  now also runs CI and Security. `docker.yml` skips the branch push of a
+  `chore: release v*` commit because the tag run for that same commit
+  publishes its version, commit SHA and `latest` image tags, so two builds of
+  one commit no longer race for those tags. The `main` image tag therefore
+  stays on the last non-release commit. When neither the variable nor the
+  secret is available, Auto Release falls back to `GITHUB_TOKEN` and
+  dispatches both workflows on the new tag as before.
 - The container image moves off Debian 12 (bookworm). It builds on
   `rust:1.99.0-trixie` and runs on `gcr.io/distroless/cc-debian13:nonroot`,
   both pinned by digest. The runtime image has no shell or package manager,

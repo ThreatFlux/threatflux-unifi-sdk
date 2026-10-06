@@ -36,6 +36,16 @@ env:
 jobs:
   build:
     name: Build Docker Image
+    # Auto Release (threatflux-automation GitHub App) pushes its
+    # "chore: release vX.Y.Z" version-bump commit to main and then tags that
+    # same commit, and both pushes start this workflow. The tag run publishes
+    # the commit with its version tags, the commit SHA tag and latest, so the
+    # branch run for the release commit is skipped. Otherwise two builds of one
+    # commit, with different digests, would race for the SHA and latest tags.
+    # Every other job needs this one and is skipped with it.
+    if: >-
+      !(github.event_name == 'push' && github.ref_type == 'branch' &&
+      startsWith(github.event.head_commit.message, 'chore: release v'))
     runs-on: ${{ vars.RUST_TEMPLATE_RUNNER_UBUNTU || 'ubuntu-latest' }}
     permissions:
       contents: read
