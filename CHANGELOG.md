@@ -25,8 +25,10 @@ This file records changes that need more context than a commit subject.
   GitHub Release, creates a missing tag at the commit it builds, and refuses
   to release an existing tag that points at a different commit.
 - A failed crates.io publish now fails the `release.yml` run instead of being
-  ignored. The publish is skipped, with a warning, only when the
-  `CARGO_REGISTRY_TOKEN` secret is not configured.
+  ignored. A real release of a version without a `-` pre-release suffix skips
+  the publish, with a warning, only when the `CARGO_REGISTRY_TOKEN` secret is
+  not configured. Versions with a `-` suffix are still never published to
+  crates.io.
 - `auto-release.yml` uses the `ThreatFlux/github_actions` reusable release
   workflow at `v0.7.6`. That version stops a release whose `Cargo.toml`
   version is lower than the latest release tag before anything is written,
