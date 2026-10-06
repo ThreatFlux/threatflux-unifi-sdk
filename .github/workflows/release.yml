@@ -15,10 +15,6 @@ on:
         description: Version to release (e.g. 1.0.0)
         required: true
         type: string
-      source_ref:
-        description: Git ref to build from
-        required: false
-        type: string
       prerelease:
         description: Is this a pre-release?
         required: false
@@ -49,43 +45,35 @@ jobs:
       contents: write # Creates or edits the GitHub Release and its tag.
     outputs:
       version: ${{ steps.version.outputs.version }}
-      source_ref: ${{ steps.source_sha.outputs.sha }}
     steps:
-      - name: Determine source ref
-        id: source_ref
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ github.event.inputs.source_ref }}" ]]; then
-            SOURCE_REF="${{ github.event.inputs.source_ref }}"
-          else
-            SOURCE_REF="${GITHUB_REF}"
-          fi
-          echo "source_ref=${SOURCE_REF}" >> "$GITHUB_OUTPUT"
-
+      # Every job builds the workflow's own commit (GITHUB_SHA): the pushed
+      # tag, or the head of the branch or tag chosen with
+      # `gh workflow run release.yml --ref <ref>` at dispatch time. There is no
+      # input for building some other revision, so a branch that moves mid-run
+      # cannot mix commits and a dispatch cannot build an unreviewed ref with
+      # the default branch's cache scope.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ steps.source_ref.outputs.source_ref }}
-
-      # Every downstream job checks out this exact commit, so a branch that
-      # moves mid-run (for example a dry run of main) cannot mix commits.
-      - name: Resolve source commit
-        id: source_sha
-        run: echo "sha=$(git rev-parse --verify HEAD)" >> "$GITHUB_OUTPUT"
+          persist-credentials: false
 
       - name: Determine version
         id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+            VERSION="${INPUT_VERSION}"
           else
             VERSION=${GITHUB_REF#refs/tags/v}
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Validate version format
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
             echo "Invalid version format: $VERSION"
             exit 1
@@ -124,7 +112,6 @@ jobs:
         if: env.DRY_RUN != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_SHA: ${{ steps.source_sha.outputs.sha }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="v${VERSION}"
@@ -139,9 +126,10 @@ jobs:
 
           # Never attach assets or a crate built from one commit to a tag that
           # names another (checkout fetched all tags with fetch-depth: 0).
+          SOURCE_SHA="$(git rev-parse --verify HEAD)"
           if TAG_SHA="$(git rev-parse -q --verify "refs/tags/${TAG}^{commit}")"; then
             if [[ "${TAG_SHA}" != "${SOURCE_SHA}" ]]; then
-              echo "::error::Tag ${TAG} points at ${TAG_SHA}, not the source commit ${SOURCE_SHA}. Dispatch with source_ref=${TAG} to rebuild that tag."
+              echo "::error::Tag ${TAG} points at ${TAG_SHA}, not the source commit ${SOURCE_SHA}. Dispatch on the tag (gh workflow run release.yml --ref ${TAG}) to rebuild it."
               exit 1
             fi
           fi
@@ -191,7 +179,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.prepare.outputs.source_ref }}
+          persist-credentials: false
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # v1
@@ -274,7 +262,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.prepare.outputs.source_ref }}
+          persist-credentials: false
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # v1
@@ -344,7 +332,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ needs.prepare.outputs.source_ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # v1
@@ -427,12 +414,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ needs.prepare.outputs.source_ref }}
 
       - name: Build image without pushing
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
-          SOURCE_SHA: ${{ needs.prepare.outputs.source_ref }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           docker build \
