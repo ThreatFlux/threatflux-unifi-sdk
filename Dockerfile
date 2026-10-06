@@ -102,8 +102,10 @@ LABEL org.opencontainers.image.title="${OCI_IMAGE_TITLE}" \
 
 COPY --from=builder /usr/bin/tini /usr/bin/tini
 
-COPY --from=builder --chown=65532:65532 /home/builder/out/bin/ /usr/local/bin/
-COPY --from=builder --chown=65532:65532 /home/builder/out/doc/ /usr/share/doc/app/
+# The binary and SBOM stay root-owned (0755/0644), so the runtime user can run
+# and read them but not modify them; only the working directory is writable.
+COPY --from=builder --chown=0:0 /home/builder/out/bin/ /usr/local/bin/
+COPY --from=builder --chown=0:0 /home/builder/out/doc/ /usr/share/doc/app/
 COPY --from=builder --chown=65532:65532 /home/builder/runtime-skel/data /data
 
 # distroless "nonroot" user and group.
