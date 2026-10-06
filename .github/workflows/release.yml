@@ -22,6 +22,11 @@ on:
         required: false
         type: boolean
         default: false
+      dry_run:
+        description: Build, package, SBOM, cargo publish --dry-run and docker build only; no tag, release, upload, publish or push
+        required: false
+        type: boolean
+        default: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,6 +36,8 @@ env:
   BINARY_PACKAGE: ${{ vars.RUST_TEMPLATE_BINARY_PACKAGE || '' }}
   SBOM_MANIFEST_PATH: ${{ vars.RUST_TEMPLATE_SBOM_MANIFEST_PATH || 'Cargo.toml' }}
   PUBLISH_PACKAGES: ${{ vars.RUST_TEMPLATE_PUBLISH_PACKAGES || '' }}
+  # Only workflow_dispatch can set this; tag pushes always perform a real release.
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
 
 jobs:
   prepare:
@@ -38,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      source_ref: ${{ steps.source_ref.outputs.source_ref }}
+      source_ref: ${{ steps.source_sha.outputs.sha }}
     steps:
       - name: Determine source ref
         id: source_ref
@@ -55,6 +62,12 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ steps.source_ref.outputs.source_ref }}
+
+      # Every downstream job checks out this exact commit, so a branch that
+      # moves mid-run (for example a dry run of main) cannot mix commits.
+      - name: Resolve source commit
+        id: source_sha
+        run: echo "sha=$(git rev-parse --verify HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Determine version
         id: version
@@ -83,11 +96,16 @@ jobs:
         run: |
           set -euo pipefail
           MANIFEST_VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"
-          if [[ "${MANIFEST_VERSION}" != "${VERSION}" ]]; then
+          if [[ "${MANIFEST_VERSION}" == "${VERSION}" ]]; then
+            echo "Cargo.toml version ${MANIFEST_VERSION} matches the requested release version"
+          elif [[ "${DRY_RUN}" == "true" ]]; then
+            # A dry run rehearses the next release before auto-release has
+            # committed its version bump, so it builds the manifest as-is.
+            echo "::warning file=Cargo.toml::Dry run: Cargo.toml is '${MANIFEST_VERSION}', not ${VERSION}. A real release of ${VERSION} fails here until the manifest carries it (auto-release commits the bump before tagging)."
+          else
             echo "::error file=Cargo.toml::Requested release version ${VERSION} does not match the Cargo.toml version '${MANIFEST_VERSION}'. Release from a commit whose manifest already carries ${VERSION} (auto-release commits the bump before tagging)."
             exit 1
           fi
-          echo "Cargo.toml version ${MANIFEST_VERSION} matches the requested release version"
 
       - name: Generate release notes
         run: |
@@ -99,8 +117,10 @@ jobs:
           fi
 
       - name: Create or update GitHub Release
+        if: env.DRY_RUN != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ steps.source_sha.outputs.sha }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="v${VERSION}"
@@ -113,13 +133,25 @@ jobs:
             IS_PRERELEASE="true"
           fi
 
+          # Never attach assets or a crate built from one commit to a tag that
+          # names another (checkout fetched all tags with fetch-depth: 0).
+          if TAG_SHA="$(git rev-parse -q --verify "refs/tags/${TAG}^{commit}")"; then
+            if [[ "${TAG_SHA}" != "${SOURCE_SHA}" ]]; then
+              echo "::error::Tag ${TAG} points at ${TAG_SHA}, not the source commit ${SOURCE_SHA}. Dispatch with source_ref=${TAG} to rebuild that tag."
+              exit 1
+            fi
+          fi
+
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file release_notes.md
+            # Keep the notes auto-release (or a maintainer) already wrote.
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE"
           else
+            # --target only applies when the tag does not exist yet; it pins a
+            # newly created tag to the commit this run builds.
             if [[ "${IS_PRERELEASE}" == "true" ]]; then
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file release_notes.md --prerelease
+              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title "$TITLE" --notes-file release_notes.md --prerelease
             else
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file release_notes.md
+              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title "$TITLE" --notes-file release_notes.md
             fi
           fi
 
@@ -266,6 +298,7 @@ jobs:
   upload-assets:
     name: Upload Release Assets
     needs: [prepare, build, sbom]
+    if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -288,7 +321,8 @@ jobs:
     name: Publish to crates.io
     needs: [prepare, build]
     runs-on: ubuntu-latest
-    if: "!contains(needs.prepare.outputs.version, '-')"
+    # A dry run always verifies the package with `cargo publish --dry-run`.
+    if: (github.event_name == 'workflow_dispatch' && inputs.dry_run) || !contains(needs.prepare.outputs.version, '-')
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -312,8 +346,45 @@ jobs:
           cargo package --locked --all-features
           cargo package --locked --list
 
+      - name: Verify crates.io publish (dry run)
+        if: env.DRY_RUN == 'true'
+        run: cargo publish --dry-run --locked --all-features
+
       - name: Publish to crates.io
+        if: env.DRY_RUN != 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: cargo publish --locked --all-features
         continue-on-error: true
+
+  docker-dry-run:
+    name: Docker Build (dry run)
+    needs: prepare
+    # Real releases build and push images from docker.yml on the tag; a dry
+    # run only proves the image builds and starts, and pushes nothing.
+    if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.prepare.outputs.source_ref }}
+
+      - name: Build image without pushing
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source_ref }}
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg VERSION="${VERSION}" \
+            --build-arg VCS_REF="${SOURCE_SHA}" \
+            --build-arg BINARY_NAME="${BINARY_NAME}" \
+            --build-arg BINARY_PACKAGE="${BINARY_PACKAGE}" \
+            --build-arg SBOM_MANIFEST_PATH="${SBOM_MANIFEST_PATH}" \
+            --tag "release-dry-run:${VERSION}" \
+            .
+          docker run --rm "release-dry-run:${VERSION}" --version

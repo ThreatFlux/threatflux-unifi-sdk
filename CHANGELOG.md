@@ -6,6 +6,13 @@ This file records changes that need more context than a commit subject.
 
 ## [Unreleased]
 
+### Added
+
+- `release.yml` and `auto-release.yml` accept a `dry_run` dispatch input.
+  A release dry run builds the binaries, SBOM, crate package
+  (`cargo publish --dry-run`) and container image without creating a tag or
+  GitHub Release, uploading assets, publishing the crate or pushing images.
+
 ### Changed
 
 - The package version in `Cargo.toml` is aligned with the existing `v0.7.5`
@@ -14,6 +21,9 @@ This file records changes that need more context than a commit subject.
 - `release.yml` no longer rewrites `Cargo.toml` before packaging. A release
   now fails before any tag or GitHub Release is created when the requested
   version differs from the manifest version.
+- `release.yml` keeps the notes auto-release already wrote on an existing
+  GitHub Release, creates a missing tag at the commit it builds, and refuses
+  to release an existing tag that points at a different commit.
 
 ## [0.7.5]
 
