@@ -22,7 +22,8 @@ This file records changes that need more context than a commit subject.
   now fails before any tag or GitHub Release is created when the requested
   version differs from the manifest version.
 - `release.yml` keeps the notes auto-release already wrote on an existing
-  GitHub Release, and a tag it creates points at the commit it builds.
+  GitHub Release, creates a missing tag at the commit it builds, and refuses
+  to release an existing tag that points at a different commit.
 
 ## [0.7.5]
 

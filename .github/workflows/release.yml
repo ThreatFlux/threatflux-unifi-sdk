@@ -133,6 +133,15 @@ jobs:
             IS_PRERELEASE="true"
           fi
 
+          # Never attach assets or a crate built from one commit to a tag that
+          # names another (checkout fetched all tags with fetch-depth: 0).
+          if TAG_SHA="$(git rev-parse -q --verify "refs/tags/${TAG}^{commit}")"; then
+            if [[ "${TAG_SHA}" != "${SOURCE_SHA}" ]]; then
+              echo "::error::Tag ${TAG} points at ${TAG_SHA}, not the source commit ${SOURCE_SHA}. Dispatch with source_ref=${TAG} to rebuild that tag."
+              exit 1
+            fi
+          fi
+
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             # Keep the notes auto-release (or a maintainer) already wrote.
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE"
