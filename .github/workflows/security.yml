@@ -9,6 +9,10 @@ on:
     - cron: "0 3 * * 1"
   workflow_dispatch:
 
+# Read-only by default; jobs that need more request it explicitly.
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: 1.96.0
