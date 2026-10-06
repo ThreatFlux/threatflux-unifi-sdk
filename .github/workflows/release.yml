@@ -74,6 +74,21 @@ jobs:
             exit 1
           fi
 
+      # The release is built and published from the checked-out commit as-is;
+      # nothing rewrites Cargo.toml, so the manifest must already carry the
+      # requested version. Check it before a tag or GitHub Release is created.
+      - name: Validate manifest version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          MANIFEST_VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')"
+          if [[ "${MANIFEST_VERSION}" != "${VERSION}" ]]; then
+            echo "::error file=Cargo.toml::Requested release version ${VERSION} does not match the Cargo.toml version '${MANIFEST_VERSION}'. Release from a commit whose manifest already carries ${VERSION} (auto-release commits the bump before tagging)."
+            exit 1
+          fi
+          echo "Cargo.toml version ${MANIFEST_VERSION} matches the requested release version"
+
       - name: Generate release notes
         run: |
           VERSION="${{ steps.version.outputs.version }}"
@@ -290,16 +305,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config
 
-      - name: Update version in Cargo.toml
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          sed -i "s/^version = .*/version = \"$VERSION\"/" Cargo.toml
-
+      # The prepare job already proved Cargo.toml carries the release version,
+      # so the package is verified and published from a clean checkout.
       - name: Verify package
         run: |
-          cargo package --all-features
-          cargo package --list
+          cargo package --locked --all-features
+          cargo package --locked --list
 
       - name: Publish to crates.io
-        run: cargo publish --all-features --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --locked --all-features
         continue-on-error: true
