@@ -1,7 +1,9 @@
 name: Release
 
+# Read-only by default. prepare and upload-assets write the GitHub Release;
+# publish requests an OIDC token for crates.io trusted publishing.
 permissions:
-  contents: write
+  contents: read
 
 on:
   push:
@@ -43,6 +45,8 @@ jobs:
   prepare:
     name: Prepare Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Creates or edits the GitHub Release and its tag.
     outputs:
       version: ${{ steps.version.outputs.version }}
       source_ref: ${{ steps.source_sha.outputs.sha }}
@@ -300,6 +304,8 @@ jobs:
     needs: [prepare, build, sbom]
     if: github.event_name != 'workflow_dispatch' || !inputs.dry_run
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Uploads the binaries and SBOMs to the GitHub Release.
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -323,10 +329,21 @@ jobs:
     runs-on: ubuntu-latest
     # A dry run always verifies the package with `cargo publish --dry-run`.
     if: (github.event_name == 'workflow_dispatch' && inputs.dry_run) || !contains(needs.prepare.outputs.version, '-')
+    # crates.io trusted publishing only accepts tokens requested by release.yml
+    # in this repository running in the crates-io environment. Dry runs use no
+    # environment (an empty name), so they record no deployment and never
+    # request a token.
+    environment:
+      name: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'crates-io' || '' }}
+      url: https://crates.io/crates/threatflux-unifi-sdk
+    permissions:
+      contents: read
+      id-token: write # Exchanged for a short-lived crates.io token by crates-io-auth-action.
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ needs.prepare.outputs.source_ref }}
 
       - name: Install Rust toolchain
@@ -350,20 +367,51 @@ jobs:
         if: env.DRY_RUN == 'true'
         run: cargo publish --dry-run --locked --all-features
 
-      # A failed publish fails the release run, so a tag and GitHub Release
-      # without a crate behind them (as happened for v0.7.5) cannot pass
-      # unnoticed. Only a repository without the token skips the publish.
-      - name: Publish to crates.io
-        if: env.DRY_RUN != 'true'
+      # crates.io versions are immutable, so re-running a release whose crate
+      # is already published skips the publish instead of failing on it. Any
+      # answer other than "found" or "not found" fails the run. Dry runs run
+      # the same check to report what a real release would do.
+      - name: Check crates.io for this version
+        id: crates_io
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           set -euo pipefail
-          if [[ -z "${CARGO_REGISTRY_TOKEN}" ]]; then
-            echo "::warning title=crates.io publish skipped::CARGO_REGISTRY_TOKEN is not configured, so the crate was not published"
-            exit 0
-          fi
-          cargo publish --locked --all-features
+          CRATE="$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["name"])')"
+          STATUS="$(curl --silent --show-error --retry 3 --output /dev/null --write-out '%{http_code}' \
+            --user-agent "ThreatFlux-release (https://github.com/${GITHUB_REPOSITORY})" \
+            "https://crates.io/api/v1/crates/${CRATE}/${VERSION}")"
+          case "${STATUS}" in
+            200)
+              echo "::notice title=crates.io publish skipped::${CRATE} ${VERSION} is already on crates.io, so a real release skips the publish"
+              echo "published=true" >> "$GITHUB_OUTPUT"
+              ;;
+            404)
+              echo "${CRATE} ${VERSION} is not on crates.io yet"
+              echo "published=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::crates.io answered HTTP ${STATUS} for ${CRATE} ${VERSION}; cannot tell whether it is already published"
+              exit 1
+              ;;
+          esac
+
+      # Trusted publishing (OIDC): no long-lived registry token is stored in
+      # the repository or organization. The action's post step revokes the
+      # short-lived token when the job ends.
+      - name: Authenticate to crates.io (trusted publishing)
+        id: crates_io_auth
+        if: env.DRY_RUN != 'true' && steps.crates_io.outputs.published == 'false'
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+
+      # A failed publish fails the release run, so a tag and GitHub Release
+      # without a crate behind them (as happened for v0.7.5) cannot pass
+      # unnoticed.
+      - name: Publish to crates.io
+        if: env.DRY_RUN != 'true' && steps.crates_io.outputs.published == 'false'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
+        run: cargo publish --locked --all-features
 
   docker-dry-run:
     name: Docker Build (dry run)
