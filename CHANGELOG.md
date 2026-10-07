@@ -6,6 +6,16 @@ This file records changes that need more context than a commit subject.
 
 ## [Unreleased]
 
+### Changed
+
+- `docker.yml` reads the `DOCKERHUB_*` secrets only when the
+  `RUST_TEMPLATE_PUBLISH_DOCKERHUB` variable is `true`; with it unset or
+  `false` (the default) no step logs in to Docker Hub or reads its secrets,
+  and only GHCR tags are generated. When it is `true`, the sign job also
+  signs the Docker Hub reference keylessly with the same identity as GHCR.
+  The README's "Container image" section describes how to turn Docker Hub
+  publishing back on.
+
 ### Fixed
 
 - `release.yml` writes the Windows archive's `.sha256` file with an LF line
