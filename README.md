@@ -230,6 +230,63 @@ unifi-cli devices list
 See the [CLI guide](docs/cli.md) for the command surface, exact environment
 variable names, TLS guidance, and declarative workflows.
 
+## Container image
+
+The Docker workflow publishes a multi-arch (`linux/amd64`, `linux/arm64`)
+image of `unifi-cli` to GitHub Container Registry, the project's primary
+registry. The runtime image is distroless, runs as a non-root user, and uses
+`unifi-cli` as its entrypoint. Pushes to `main` publish the `main`, `latest`,
+and short commit SHA tags; release tags publish `X.Y.Z`, `X.Y`, `X`, and the
+commit SHA.
+
+```bash
+docker run --rm ghcr.io/threatflux/threatflux-unifi-sdk:latest --help
+```
+
+Images built from `main` and from release tags are signed keylessly with
+cosign, and the workflow keeps an SPDX SBOM of each pushed image as a workflow
+artifact. Verify an image before you use it:
+
+```bash
+cosign verify ghcr.io/threatflux/threatflux-unifi-sdk:<version> \
+  --certificate-identity-regexp '^https://github\.com/ThreatFlux/threatflux-unifi-sdk/\.github/workflows/docker\.yml@refs/(heads/main|tags/v.+)$' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+### Docker Hub publishing
+
+Docker Hub publishing is off by default. Unless the `RUST_TEMPLATE_PUBLISH_DOCKERHUB`
+repository or organization variable is `true`, no workflow step logs in to
+Docker Hub, reads the `DOCKERHUB_*` secrets, or generates a `docker.io` tag.
+Images already on Docker Hub are left as they are. To publish there again:
+
+1. In Docker Hub, create an access token with **Read & Write** permission on
+   only the repositories this workflow pushes to
+   (`threatflux/threatflux-unifi-sdk`; create the repository first if it does
+   not exist). Prefer an organization access token scoped to that repository,
+   and do not grant Delete.
+2. Store the token as the `DOCKERHUB_TOKEN` secret and the Docker Hub account
+   or organization that owns it as `DOCKERHUB_USERNAME`, either as
+   organization secrets available to this repository or as repository
+   secrets.
+3. Turn the switch on, and set `RUST_TEMPLATE_DOCKERHUB_NAMESPACE` as well if
+   the images belong to a namespace other than `threatflux`:
+
+   ```bash
+   gh variable set RUST_TEMPLATE_PUBLISH_DOCKERHUB --body true \
+     --repo ThreatFlux/threatflux-unifi-sdk
+   ```
+
+The next non-pull-request run then pushes the same multi-arch digest, with the
+same tags (including the `base-rust-*` build-stage tags), to
+`docker.io/threatflux/threatflux-unifi-sdk`. Runs from `main` and release
+tags also sign the Docker Hub reference with the same keyless identity as
+GHCR, so the `cosign verify` command above works for
+`docker.io/threatflux/threatflux-unifi-sdk:<version>` too. If the variable is
+`true` but either secret is missing, the run logs a warning and publishes to
+GHCR only. To turn Docker Hub publishing off again, delete the variable or set
+it to `false`.
+
 ## Cargo features
 
 The service-name features are compatibility markers today: there are no
