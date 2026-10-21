@@ -3,7 +3,10 @@
     "original_index": "sha256:55c9cf48cfd8cc3858b7e0bc81953f3e09c6bb28bed2d40dc4f0a1c4aa21c0ef",
     "amd64_manifest": "sha256:21fbc09c7e008c5a73ac966eba8a9a2f8442adfcf65785ffb0989eabb5e7bdc0",
     "arm64_manifest": "sha256:7e21f5b43c389f836220728e2eade251f74201f7fec863739f034df2380fe82b",
-    "libstdcxx_sha256": "972bb2a18b71140dab0240f8a1f68ab3fb1d56bcd4c4f824a91b70888faf5a00",
+    "libstdcxx_sha256": {
+      "amd64": "972bb2a18b71140dab0240f8a1f68ab3fb1d56bcd4c4f824a91b70888faf5a00",
+      "arm64": "fff1f0050a33ddf29c44634c7639ac16e2573a61e3daab4fcc4c007b432ccf19"
+    },
     "nscd_files": [],
     "privileged_files": []
   },
@@ -197,7 +200,7 @@
       "cve": "CVE-2026-27171",
       "package": "zlib1g",
       "decision": "TP package",
-      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "why": "Affected Debian zlib version present. CVE-2026-27171 concerns CPU consumption in crc32_combine64/crc32_combine_gen64; an SDK call path to those functions is unproven. System zlib is removed from the replacement runtime.",
       "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/107"
     },
     {

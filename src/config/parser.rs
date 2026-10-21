@@ -85,6 +85,7 @@ fn substitute_env(input: &str) -> String {
 mod tests {
     use super::*;
 
+    /// Preserve YAML types and unresolved variables through export and reparse.
     #[test]
     fn yaml_config_preserves_typed_values_and_export_roundtrip() {
         let config = parse_yaml(
@@ -115,6 +116,7 @@ networks:
         );
     }
 
+    /// Reject duplicate keys and malformed YAML before schema validation.
     #[test]
     fn yaml_config_rejects_duplicate_keys_and_malformed_input() {
         assert!(parse_yaml("unifi: {host: one, host: two, username: u, password: p}").is_err());

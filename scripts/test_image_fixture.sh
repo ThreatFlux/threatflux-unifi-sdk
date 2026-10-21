@@ -8,6 +8,7 @@ platform="${2:-}"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 root="$(mktemp -d "${TMPDIR:-/tmp}/unifi-image-fixture.XXXXXXXX")"
 server_pid=""
+# Stop the fixture and remove temporary certificates and captured output.
 cleanup() {
   if [[ -n "$server_pid" ]]; then
     kill "$server_pid" 2>/dev/null || true
@@ -61,6 +62,12 @@ cli=(--host "https://host.docker.internal:$(cat "$root/port")"
   --username fixture-user --password fixture-password --verify-ssl clients list)
 if docker "${docker_args[@]}" -- "$image" "${cli[@]}" > "$root/untrusted.stdout" 2> "$root/untrusted.stderr"; then
   echo 'TLS unexpectedly trusted generated CA' >&2
+  exit 1
+fi
+# The SDK currently flattens connection errors, so CLI stderr omits the TLS
+# cause. Require the controller to observe the client's unknown-CA TLS alert.
+if ! python3 "$script_dir/test_image_fixture.py" verify-untrusted "$root"; then
+  cat "$root/untrusted.stderr" >&2
   exit 1
 fi
 if ! docker "${docker_args[@]}" \

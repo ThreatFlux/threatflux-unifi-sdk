@@ -272,6 +272,7 @@ impl TrafficRule {
 mod tests {
     use super::*;
 
+    /// The builder preserves the blocked application category and enabled state.
     #[test]
     fn test_block_rule() {
         let rule = TrafficRule::block("Block social media")

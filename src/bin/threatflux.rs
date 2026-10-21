@@ -357,6 +357,7 @@ async fn handle_diff(args: SyncArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Fetch controller configuration and print it in the requested JSON or YAML format.
 async fn handle_export(connection: &ConnectionArgs, args: ExportArgs) -> anyhow::Result<()> {
     let client = connect_from_args(connection).await?;
     let export = export_config(&client).await?;

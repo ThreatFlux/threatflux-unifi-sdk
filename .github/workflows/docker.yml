@@ -15,6 +15,9 @@ on:
       - "Cargo.lock"
       - "src/**"
       - "crates/**"
+      - "scripts/test_image_fixture.py"
+      - "scripts/test_image_fixture.sh"
+      - "scripts/test_image_fixture_errors.sh"
   schedule:
     - cron: "0 4 * * 1"
   workflow_dispatch:
@@ -240,6 +243,7 @@ jobs:
           PLATFORMS: ${{ steps.platforms.outputs.value }}
         run: |
           set -euo pipefail
+          # Verify startup, nonroot identity and DNS/TLS/controller behavior.
           smoke_test() {
             local platform="$1" image="$2" container user
             echo "::group::Smoke test ${platform}"
@@ -254,6 +258,7 @@ jobs:
               echo "::error::${image} (${platform}) runs as root (USER '${user}')"
               exit 1
             fi
+            bash scripts/test_image_fixture_errors.sh "${image}" "${platform}"
             bash scripts/test_image_fixture.sh "${image}" "${platform}"
             echo "Runs as USER ${user}"
             echo "::endgroup::"
