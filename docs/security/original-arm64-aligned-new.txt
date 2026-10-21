@@ -1,0 +1,54 @@
+
+/tmp/unifi-arm64-libstdc++.so:	file format elf64-littleaarch64
+
+Disassembly of section .text:
+
+00000000000aa1c0 <_ZnwmSt11align_val_t>:
+   aa1c0: d503233f     	paciasp
+   aa1c4: a9bc7bfd     	stp	x29, x30, [sp, #-0x40]!
+   aa1c8: d1000422     	sub	x2, x1, #0x1
+   aa1cc: ca020023     	eor	x3, x1, x2
+   aa1d0: 910003fd     	mov	x29, sp
+   aa1d4: a90153f3     	stp	x19, x20, [sp, #0x10]
+   aa1d8: f90013f5     	str	x21, [sp, #0x20]
+   aa1dc: eb02007f     	cmp	x3, x2
+   aa1e0: 540002e9     	b.ls	0xaa23c <_ZnwmSt11align_val_t+0x7c>
+   aa1e4: f100001f     	cmp	x0, #0x0
+   aa1e8: d2800102     	mov	x2, #0x8                // =8
+   aa1ec: 9a9f1414     	csinc	x20, x0, xzr, ne
+   aa1f0: eb02003f     	cmp	x1, x2
+   aa1f4: 9a822033     	csel	x19, x1, x2, hs
+   aa1f8: 9100e3f5     	add	x21, sp, #0x38
+   aa1fc: 14000004     	b	0xaa20c <_ZnwmSt11align_val_t+0x4c>
+   aa200: 97ffcc70     	bl	0x9d3c0 <_ZSt15get_new_handlerv@plt>
+   aa204: b40001c0     	cbz	x0, 0xaa23c <_ZnwmSt11align_val_t+0x7c>
+   aa208: d63f0000     	blr	x0
+   aa20c: aa1403e2     	mov	x2, x20
+   aa210: aa1303e1     	mov	x1, x19
+   aa214: aa1503e0     	mov	x0, x21
+   aa218: 97ffcbee     	bl	0x9d1d0 <posix_memalign@plt>
+   aa21c: 35ffff20     	cbnz	w0, 0xaa200 <_ZnwmSt11align_val_t+0x40>
+   aa220: f9401fe0     	ldr	x0, [sp, #0x38]
+   aa224: b4fffee0     	cbz	x0, 0xaa200 <_ZnwmSt11align_val_t+0x40>
+   aa228: f94013f5     	ldr	x21, [sp, #0x20]
+   aa22c: a94153f3     	ldp	x19, x20, [sp, #0x10]
+   aa230: a8c47bfd     	ldp	x29, x30, [sp], #0x40
+   aa234: d50323bf     	autiasp
+   aa238: d65f03c0     	ret
+   aa23c: d2800100     	mov	x0, #0x8                // =8
+   aa240: 97ffcf08     	bl	0x9de60 <__cxa_allocate_exception@plt>
+   aa244: b0000da3     	adrp	x3, 0x25f000
+   aa248: f9428463     	ldr	x3, [x3, #0x508]
+   aa24c: b0000da2     	adrp	x2, 0x25f000
+   aa250: f946f842     	ldr	x2, [x2, #0xdf0]
+   aa254: 91004063     	add	x3, x3, #0x10
+   aa258: 90000da1     	adrp	x1, 0x25e000 <_ZTVSt10moneypunctIwLb1EE+0x8>
+   aa25c: f947b821     	ldr	x1, [x1, #0xf70]
+   aa260: f9000003     	str	x3, [x0]
+   aa264: 97ffd0e3     	bl	0x9e5f0 <__cxa_throw@plt>
+   aa268: d503201f     	nop
+   aa26c: d503201f     	nop
+   aa270: d503201f     	nop
+   aa274: d503201f     	nop
+   aa278: d503201f     	nop
+   aa27c: d503201f     	nop

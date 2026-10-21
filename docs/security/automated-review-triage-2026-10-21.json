@@ -1,0 +1,318 @@
+{
+  "repository": "ThreatFlux/threatflux-unifi-sdk",
+  "pull_request": 80,
+  "reviewed_head": "29d673d8c8586fda682c0c319b76d9ea54b53459",
+  "scope": "All automated inline feedback, review-body additional comments, pre-merge checks and embedded tool diagnostics available at triage time. Duplicates are grouped with source identifiers.",
+  "review_sources": {
+    "inline_comment_ids": [
+      4333635506,
+      4333635510,
+      4333683294,
+      4333683327,
+      4333683349,
+      4333683358,
+      4333683370,
+      4333683390
+    ],
+    "review_ids": [
+      5595678388,
+      5595736352,
+      5603138120
+    ],
+    "issue_comment_ids": [
+      6309451707,
+      6309451986,
+      6309475077
+    ]
+  },
+  "summary": {
+    "true_positive_fixed": 10,
+    "already_fixed": 4,
+    "false_positive": 10,
+    "recommendation": 2,
+    "no_action": 1
+  },
+  "items": [
+    {
+      "id": "workspace-copy",
+      "status": "true_positive_fixed",
+      "subject": "Workspace member sources omitted from Docker builder",
+      "sources": [
+        4333635506
+      ],
+      "rationale": "Restored full context copy under .dockerignore, preserving arbitrary member/path dependency layouts.",
+      "validation": {
+        "before": "Docker source-stage build failed: failed to read /build/crates/fixture-cli/Cargo.toml (os error 2).",
+        "after": "Same nested workspace cargo metadata --locked --no-deps --format-version 1 succeeds."
+      }
+    },
+    {
+      "id": "fixture-path-filter",
+      "status": "true_positive_fixed",
+      "subject": "Fixture-only changes did not trigger Docker checks",
+      "sources": [
+        4333635510
+      ],
+      "rationale": "Docker PR paths now include the Python fixture, Bash wrapper, and new negative regression script."
+    },
+    {
+      "id": "msrv-and-matrix",
+      "status": "true_positive_fixed",
+      "subject": "Installed toolchains were overridden by rust-toolchain.toml",
+      "sources": [
+        4333683358
+      ],
+      "rationale": "MSRV now invokes rustc/cargo with the explicit minimum version; the test matrix sets RUSTUP_TOOLCHAIN and prints rustc version.",
+      "validation": {
+        "before": "Run 39636236287 MSRV, beta and nightly logs auto-installed 1.99.1 after their toolchain setup.",
+        "after": "cargo +1.96.0 check --locked --workspace --all-features passed; rustc +1.96.0 reports 1.96.0."
+      }
+    },
+    {
+      "id": "tls-failure-cause",
+      "status": "true_positive_fixed",
+      "subject": "Any failed untrusted run counted as CA rejection",
+      "sources": [
+        4333683370,
+        "f8476a8f65e78ff1afbd6ada"
+      ],
+      "rationale": "Require the fixture server to observe TLSV1_ALERT_UNKNOWN_CA. CLI connection errors omit the underlying certificate cause, so matching CLI stderr alone cannot verify this image.",
+      "validation": {
+        "before": "Injecting a DNS error into only the untrusted run still printed untrusted_ca_rejected: true.",
+        "after": "Same injection fails with Expected an untrusted-issuer TLS error; genuine runtime image still passes untrusted/trusted-CA login and clients checks. Regression runs in Docker CI."
+      }
+    },
+    {
+      "id": "architecture-hashes",
+      "status": "true_positive_fixed",
+      "subject": "Original libstdc++ hash was architecture-ambiguous",
+      "sources": [
+        4333683327
+      ],
+      "rationale": "Stored separate amd64 and arm64 hashes.",
+      "validation": {
+        "observed": "Re-exported libstdc++.so.6 from original immutable amd64 and arm64 images; SHA256 matches 972bb2a18b71140dab0240f8a1f68ab3fb1d56bcd4c4f824a91b70888faf5a00 and fff1f0050a33ddf29c44634c7639ac16e2573a61e3daab4fcc4c007b432ccf19, respectively."
+      }
+    },
+    {
+      "id": "zlib-rationale",
+      "status": "true_positive_fixed",
+      "subject": "zlib alert reused libc resolver rationale",
+      "sources": [
+        4333683349
+      ],
+      "rationale": "Updated JSON and Markdown alert 107 to the crc32_combine64/crc32_combine_gen64 CPU-consumption issue. Reachability remains unproven; removal remains the remediation.",
+      "validation": {
+        "source": "https://security-tracker.debian.org/tracker/CVE-2026-27171"
+      }
+    },
+    {
+      "id": "report-spacing",
+      "status": "true_positive_fixed",
+      "subject": "Missing spaces in security evidence prose",
+      "sources": [
+        "review-5595736352:spacing",
+        "review-5603138120:spacing",
+        "LanguageTool:prose"
+      ],
+      "rationale": "Separated joined words/numbers without changing hashes, timestamps, versions or disassembly bytes."
+    },
+    {
+      "id": "amd64-evidence",
+      "status": "true_positive_fixed",
+      "subject": "Security report still said hosted AMD64 evidence was pending",
+      "sources": [
+        "bcfe27ad6bc496be01188121"
+      ],
+      "rationale": "Recorded completed AMD64 build, fixture and security-scan evidence with the exact reviewed commit and Actions run.",
+      "validation": {
+        "source": "https://github.com/ThreatFlux/threatflux-unifi-sdk/actions/runs/39636236304",
+        "revision": "29d673d8c8586fda682c0c319b76d9ea54b53459"
+      }
+    },
+    {
+      "id": "docstring-coverage",
+      "status": "true_positive_fixed",
+      "subject": "CodeRabbit docstring coverage below configured threshold",
+      "sources": [
+        "issuecomment-6309451986:Docstring Coverage"
+      ],
+      "rationale": "Added documentation to changed Rust functions/tests, Python classes/methods and shell helpers; no execution semantics changed by these comments."
+    },
+    {
+      "id": "docker-pipefail",
+      "status": "true_positive_fixed",
+      "subject": "Alpine build shell did not propagate pipeline failures",
+      "sources": [
+        "Hadolint:DL4006"
+      ],
+      "rationale": "Set the Alpine base SHELL to /bin/ash -eo pipefail -c so derived builder stages inherit pipeline error handling.",
+      "validation": {
+        "before": "/bin/sh -c false-pipe-true exits 0.",
+        "after": "/bin/ash -eo pipefail -c false-pipe-true exits 1."
+      }
+    },
+    {
+      "id": "markdown-blank",
+      "status": "already_fixed",
+      "subject": "Consecutive blank lines broke Markdown lint",
+      "sources": [
+        4333683294
+      ],
+      "rationale": "Already fixed by b677561; current documentation contract passes."
+    },
+    {
+      "id": "empty-assertions",
+      "status": "already_fixed",
+      "subject": "Rust 1.99 Clippy rejects empty assertions",
+      "sources": [
+        4333683358,
+        "14a74c5135fe1fdbd930efba",
+        "70f324ba0478ec4d73fabc02"
+      ],
+      "rationale": "Already fixed before this triage; current strict Clippy gate passes."
+    },
+    {
+      "id": "raw-string-hashes",
+      "status": "already_fixed",
+      "subject": "Needless raw string delimiters in YAML test",
+      "sources": [
+        4333683390
+      ],
+      "rationale": "Already fixed by b8174a4; current YAML test uses an unhashed raw string and strict Clippy passes."
+    },
+    {
+      "id": "listener-scope",
+      "status": "already_fixed",
+      "subject": "Fixture listener exposed every host interface",
+      "sources": [
+        "review-5595736352:fixture-listener"
+      ],
+      "rationale": "29d673d binds loopback on macOS or the Docker bridge gateway on Linux; hosted and local smoke tests pass."
+    },
+    {
+      "id": "subprocess-injection",
+      "status": "false_positive",
+      "subject": "Python fixture subprocess calls alleged command injection",
+      "sources": [
+        "ast-grep:os-system-unsanitized-data",
+        "ast-grep:subprocess-from-request"
+      ],
+      "rationale": "Historical code passed argv lists with shell=False and received local test CLI arguments, not incoming HTTP request data. Those subprocess calls were removed in 29d673d; current quoted Bash arrays terminate Docker options before the image. Bandit/Semgrep and hosted Codacy pass."
+    },
+    {
+      "id": "jsonify",
+      "status": "false_positive",
+      "subject": "Use Flask jsonify for JSON output",
+      "sources": [
+        "ast-grep:use-jsonify"
+      ],
+      "rationale": "The fixture uses standard-library HTTP handling and JSON-lines/stdout, not Flask. json.dumps correctly escapes strings and the HTTP reply sets application/json and byte Content-Length."
+    },
+    {
+      "id": "apk-pinning",
+      "status": "recommendation",
+      "subject": "Pin all builder apk package versions",
+      "sources": [
+        "Hadolint:DL3018"
+      ],
+      "rationale": "This is a reproducibility recommendation, not a reproduced functional/security defect. Existing policy deliberately refreshes maintained Alpine packages; the base is digest-pinned and native archive/provenance and image scans validate the runtime. No lint suppression added."
+    },
+    {
+      "id": "builder-user",
+      "status": "false_positive",
+      "subject": "Named Docker USER may not resolve",
+      "sources": [
+        "Hadolint:DL3066"
+      ],
+      "rationale": "adduser -D -u 1000 builder precedes USER builder in the same stage. The runtime independently uses numeric USER 65532:65532; builds and nonroot smoke checks pass."
+    },
+    {
+      "id": "disassembly-language",
+      "status": "false_positive",
+      "subject": "LanguageTool Dutch grammar warnings for ff bytes",
+      "sources": [
+        "LanguageTool:original-amd64-aligned-new.txt"
+      ],
+      "rationale": "The flagged ff values are machine-code bytes in retained disassembly evidence. Editing them as prose would corrupt evidence."
+    },
+    {
+      "id": "toolchain-actions",
+      "status": "recommendation",
+      "subject": "Rust setup actions duplicate runner capabilities",
+      "sources": [
+        "zizmor:superfluous-actions"
+      ],
+      "rationale": "Pinned setup actions install the selected compiler/targets/components; replacing them with raw rustup is an optional workflow preference, not a reproduced defect."
+    },
+    {
+      "id": "release-matrix-injection",
+      "status": "false_positive",
+      "subject": "Release matrix values interpolated into scripts",
+      "sources": [
+        "zizmor:template-injection:release.yml:224",
+        "zizmor:template-injection:release.yml:226",
+        "zizmor:template-injection:release.yml:228"
+      ],
+      "rationale": "matrix.target and matrix.artifact are literal entries defined in the checked-in release workflow. No attacker-controlled event text or computed matrix supplies these values."
+    },
+    {
+      "id": "cached-credentials",
+      "status": "false_positive",
+      "subject": "CI checkout credentials persisted through artifacts",
+      "sources": [
+        "zizmor:artipacked:ci.yml:106"
+      ],
+      "rationale": "This job has no artifact upload and caches only Cargo directories and target, not checkout credential storage. It uses pinned checkout v7; no credential artifact path was demonstrated."
+    },
+    {
+      "id": "trust-store-platform",
+      "status": "false_positive",
+      "subject": "Trust-store build platform differs from runtime",
+      "sources": [
+        "a5109cd8e7419154d08c089f"
+      ],
+      "rationale": "The stage exports only architecture-independent certificate data and ca-certificates metadata (Architecture: all), valid for both platforms."
+    },
+    {
+      "id": "trivy-ca-metadata",
+      "status": "false_positive",
+      "subject": "Copied ca-certificates dpkg status may be invisible to Trivy",
+      "sources": [
+        "ba63afb7ae7686fa5e3d6a55"
+      ],
+      "rationale": "Committed final-artifact image_scan.Results includes ca-certificates 20250419+deb13u1 with Arch all; the hosted Trivy scan also passes."
+    },
+    {
+      "id": "host-dns",
+      "status": "false_positive",
+      "subject": "Linux fixture lacks host.docker.internal mapping",
+      "sources": [
+        "3fdab85220d69e883ab77d93"
+      ],
+      "rationale": "The wrapper explicitly supplies the Docker bridge gateway mapping on Linux. Hosted Linux DNS/login/clients smoke tests passed."
+    },
+    {
+      "id": "cosign-version",
+      "status": "false_positive",
+      "subject": "Pinned cosign release might not exist",
+      "sources": [
+        "a2a489aa02b9c31534ffa82c"
+      ],
+      "rationale": "GitHub release API confirms v3.1.4, published 2026-10-20T18:27:42Z.",
+      "validation": {
+        "source": "https://github.com/sigstore/cosign/releases/tag/v3.1.4"
+      }
+    },
+    {
+      "id": "positive-review-comments",
+      "status": "no_action",
+      "subject": "Accepted positive and no-change automated review observations",
+      "sources": [
+        "reviews-5595736352-and-5603138120:LGTM",
+        "Codacy:zero-new-issues"
+      ],
+      "rationale": "Read all additional comments, inline comments, review bodies and issue summaries; positive observations do not request changes. Existing evidence links and exact disassembly bytes remain intact."
+    }
+  ]
+}

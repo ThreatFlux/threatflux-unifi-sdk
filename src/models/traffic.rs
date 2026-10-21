@@ -272,6 +272,7 @@ impl TrafficRule {
 mod tests {
     use super::*;
 
+    /// The builder preserves the blocked application category and enabled state.
     #[test]
     fn test_block_rule() {
         let rule = TrafficRule::block("Block social media")
@@ -280,7 +281,7 @@ mod tests {
 
         assert_eq!(rule.description, "Block social media");
         assert_eq!(rule.action, "BLOCK");
-        assert!(!rule.app_category_ids.is_empty());
+        assert_eq!(rule.app_category_ids, vec!["social".to_string()]);
         assert!(rule.enabled);
     }
 

@@ -205,21 +205,23 @@ mod tests {
         assert!(route.interface.is_none());
     }
 
+    /// Blackhole routes have no next-hop gateway and retain their destination.
     #[test]
     fn test_blackhole_route() {
         let route = StaticRoute::blackhole("192.168.100.0/24");
         assert_eq!(route.route_type, "blackhole");
-        assert!(route.gateway.is_empty());
+        assert_eq!(route.gateway, "");
         assert_eq!(route.network, "192.168.100.0/24");
         assert!(route.enabled);
     }
 
+    /// Interface routes identify an interface and have no next-hop gateway.
     #[test]
     fn test_interface_route() {
         let route = StaticRoute::via_interface("172.16.0.0/12", "eth1");
         assert_eq!(route.route_type, "interface-route");
         assert_eq!(route.interface, Some("eth1".to_string()));
-        assert!(route.gateway.is_empty());
+        assert_eq!(route.gateway, "");
     }
 
     #[test]

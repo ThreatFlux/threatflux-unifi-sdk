@@ -357,12 +357,13 @@ async fn handle_diff(args: SyncArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Fetch controller configuration and print it in the requested JSON or YAML format.
 async fn handle_export(connection: &ConnectionArgs, args: ExportArgs) -> anyhow::Result<()> {
     let client = connect_from_args(connection).await?;
     let export = export_config(&client).await?;
     match args.format.as_str() {
         "json" => println!("{}", serde_json::to_string_pretty(&export)?),
-        _ => println!("{}", serde_yaml_ng::to_string(&export)?),
+        _ => println!("{}", serde_saphyr::to_string(&export)?),
     }
     Ok(())
 }
