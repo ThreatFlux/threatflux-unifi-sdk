@@ -254,7 +254,7 @@ jobs:
               echo "::error::${image} (${platform}) runs as root (USER '${user}')"
               exit 1
             fi
-            python3 scripts/test_image_fixture.py "${image}" "${platform}"
+            bash scripts/test_image_fixture.sh "${image}" "${platform}"
             echo "Runs as USER ${user}"
             echo "::endgroup::"
           }
