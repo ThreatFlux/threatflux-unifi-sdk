@@ -1,0 +1,260 @@
+{
+  "artifact": {
+    "original_index": "sha256:55c9cf48cfd8cc3858b7e0bc81953f3e09c6bb28bed2d40dc4f0a1c4aa21c0ef",
+    "amd64_manifest": "sha256:21fbc09c7e008c5a73ac966eba8a9a2f8442adfcf65785ffb0989eabb5e7bdc0",
+    "arm64_manifest": "sha256:7e21f5b43c389f836220728e2eade251f74201f7fec863739f034df2380fe82b",
+    "libstdcxx_sha256": "972bb2a18b71140dab0240f8a1f68ab3fb1d56bcd4c4f824a91b70888faf5a00",
+    "nscd_files": [],
+    "privileged_files": []
+  },
+  "alerts": [
+    {
+      "alert": 354,
+      "cve": "CVE-2026-95619",
+      "package": "libstdc++6",
+      "decision": "FP",
+      "why": "Both actual image implementations call posix_memalign with unrounded size; upstream identifies this build path as unaffected. Committed disassembly records exact calls.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/354"
+    },
+    {
+      "alert": 353,
+      "cve": "CVE-2026-102010",
+      "package": "libstdc++6",
+      "decision": "FP",
+      "why": "Affected PBDS template header is absent; runtime shared object does not implement it. No evidence of a compiled PBDS consumer in Rust CLI.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/353"
+    },
+    {
+      "alert": 343,
+      "cve": "CVE-2026-95619",
+      "package": "libgomp1",
+      "decision": "FP",
+      "why": "Different binary component: affected code is libstdc++ aligned new or a PBDS development template; absent from this package.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/343"
+    },
+    {
+      "alert": 342,
+      "cve": "CVE-2026-102010",
+      "package": "libgomp1",
+      "decision": "FP",
+      "why": "Different binary component: affected code is libstdc++ aligned new or a PBDS development template; absent from this package.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/342"
+    },
+    {
+      "alert": 334,
+      "cve": "CVE-2026-95619",
+      "package": "libgcc-s1",
+      "decision": "FP",
+      "why": "Different binary component: affected code is libstdc++ aligned new or a PBDS development template; absent from this package.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/334"
+    },
+    {
+      "alert": 333,
+      "cve": "CVE-2026-102010",
+      "package": "libgcc-s1",
+      "decision": "FP",
+      "why": "Different binary component: affected code is libstdc++ aligned new or a PBDS development template; absent from this package.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/333"
+    },
+    {
+      "alert": 331,
+      "cve": "CVE-2026-97399",
+      "package": "libc6",
+      "decision": "FP",
+      "why": "Power8-only strncasecmp implementation; immutable published index contains only amd64/arm64.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/331"
+    },
+    {
+      "alert": 330,
+      "cve": "CVE-2026-95619",
+      "package": "gcc-14-base",
+      "decision": "FP",
+      "why": "Different binary component: affected code is libstdc++ aligned new or a PBDS development template; absent from this package.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/330"
+    },
+    {
+      "alert": 329,
+      "cve": "CVE-2026-102010",
+      "package": "gcc-14-base",
+      "decision": "FP",
+      "why": "Different binary component: affected code is libstdc++ aligned new or a PBDS development template; absent from this package.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/329"
+    },
+    {
+      "alert": 323,
+      "cve": "CVE-2026-95818",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/323"
+    },
+    {
+      "alert": 322,
+      "cve": "CVE-2026-86805",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/322"
+    },
+    {
+      "alert": 319,
+      "cve": "CVE-2026-8674",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/319"
+    },
+    {
+      "alert": 311,
+      "cve": "CVE-2026-89092",
+      "package": "libc6",
+      "decision": "FP",
+      "why": "Affected nscd daemon absent from both original final filesystems; source-package fanout is insufficient.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/311"
+    },
+    {
+      "alert": 310,
+      "cve": "CVE-2026-85091",
+      "package": "zlib1g",
+      "decision": "Undetermined",
+      "why": "Debian version range conflicts with upstream introduction of nonblocking gzip machinery after1.3.1. No dismissal; runtime removes package.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/310"
+    },
+    {
+      "alert": 260,
+      "cve": "CVE-2026-80489",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/260"
+    },
+    {
+      "alert": 259,
+      "cve": "CVE-2026-18374",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/259"
+    },
+    {
+      "alert": 258,
+      "cve": "CVE-2026-77117",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/258"
+    },
+    {
+      "alert": 257,
+      "cve": "CVE-2026-19499",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/257"
+    },
+    {
+      "alert": 249,
+      "cve": "CVE-2026-19542",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/249"
+    },
+    {
+      "alert": 243,
+      "cve": "CVE-2026-6791",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/243"
+    },
+    {
+      "alert": 242,
+      "cve": "CVE-2026-6368",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/242"
+    },
+    {
+      "alert": 151,
+      "cve": "CVE-2026-6238",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/151"
+    },
+    {
+      "alert": 150,
+      "cve": "CVE-2026-5435",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/150"
+    },
+    {
+      "alert": 107,
+      "cve": "CVE-2026-27171",
+      "package": "zlib1g",
+      "decision": "TP package",
+      "why": "Affected Debian library/version present. Resolver initialization is plausibly reachable via reqwest; other specialized APIs have conditional or unproven application triggers. Affected runtime package removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/107"
+    },
+    {
+      "alert": 38,
+      "cve": "CVE-2019-9192",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Debian tracks actual libc version as affected/unimportant or disputed. No demonstrated SDK exploit chain; no unreachability-to-FP inference. Entire glibc runtime removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/38"
+    },
+    {
+      "alert": 37,
+      "cve": "CVE-2019-1010025",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Debian tracks actual libc version as affected/unimportant or disputed. No demonstrated SDK exploit chain; no unreachability-to-FP inference. Entire glibc runtime removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/37"
+    },
+    {
+      "alert": 36,
+      "cve": "CVE-2019-1010024",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Debian tracks actual libc version as affected/unimportant or disputed. No demonstrated SDK exploit chain; no unreachability-to-FP inference. Entire glibc runtime removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/36"
+    },
+    {
+      "alert": 35,
+      "cve": "CVE-2019-1010023",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Debian tracks actual libc version as affected/unimportant or disputed. No demonstrated SDK exploit chain; no unreachability-to-FP inference. Entire glibc runtime removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/35"
+    },
+    {
+      "alert": 34,
+      "cve": "CVE-2019-1010022",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Debian tracks actual libc version as affected/unimportant or disputed. No demonstrated SDK exploit chain; no unreachability-to-FP inference. Entire glibc runtime removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/34"
+    },
+    {
+      "alert": 33,
+      "cve": "CVE-2018-20796",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Debian tracks actual libc version as affected/unimportant or disputed. No demonstrated SDK exploit chain; no unreachability-to-FP inference. Entire glibc runtime removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/33"
+    },
+    {
+      "alert": 32,
+      "cve": "CVE-2010-4756",
+      "package": "libc6",
+      "decision": "TP package",
+      "why": "Debian tracks actual libc version as affected/unimportant or disputed. No demonstrated SDK exploit chain; no unreachability-to-FP inference. Entire glibc runtime removed.",
+      "url": "https://github.com/ThreatFlux/threatflux-unifi-sdk/security/code-scanning/32"
+    }
+  ]
+}

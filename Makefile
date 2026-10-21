@@ -3,7 +3,7 @@
 
 CARGO ?= cargo
 RUST_MSRV ?= 1.96.0
-RUST_TOOLCHAIN ?= 1.96.0
+RUST_TOOLCHAIN ?= 1.99.1
 
 DOCKER_IMAGE ?= $(shell basename $(CURDIR))
 DOCKER_TAG ?= latest
@@ -51,19 +51,19 @@ help: ## Display this help message
 dev-setup: ## Install development tools
 	@echo "$(CYAN)Installing development tools...$(NC)"
 	@rustup component add rustfmt clippy llvm-tools-preview 2>/dev/null || true
-	@cargo install cargo-llvm-cov --locked 2>/dev/null || echo "cargo-llvm-cov already installed"
-	@cargo install cargo-audit --locked 2>/dev/null || echo "cargo-audit already installed"
-	@cargo install cargo-deny --locked 2>/dev/null || echo "cargo-deny already installed"
-	@cargo install cargo-cyclonedx --locked 2>/dev/null || echo "cargo-cyclonedx already installed"
-	@cargo install cargo-hack --locked 2>/dev/null || echo "cargo-hack already installed"
-	@python3 -m pip install --user pre-commit 2>/dev/null || echo "pre-commit already available"
+	@cargo install cargo-llvm-cov --version 0.9.1 --locked 2>/dev/null || echo "cargo-llvm-cov already installed"
+	@cargo install cargo-audit --version 0.22.2 --locked 2>/dev/null || echo "cargo-audit already installed"
+	@cargo install cargo-deny --version 0.20.2 --locked 2>/dev/null || echo "cargo-deny already installed"
+	@cargo install cargo-cyclonedx --version 0.5.9 --locked 2>/dev/null || echo "cargo-cyclonedx already installed"
+	@cargo install cargo-hack --version 0.6.45 --locked 2>/dev/null || echo "cargo-hack already installed"
+	@python3 -m pip install --user pre-commit==4.7.0 2>/dev/null || echo "pre-commit already available"
 	@echo "$(GREEN)Development tools installed!$(NC)"
 
 .PHONY: install-hooks
 install-hooks: ## Install git hooks
 	@echo "$(CYAN)Installing git hooks...$(NC)"
 	@mkdir -p .git/hooks
-	@echo '#!/bin/sh\nmake pre-commit' > .git/hooks/pre-commit
+	@printf '%s\n' '#!/bin/sh' 'make pre-commit' > .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
 	@echo "$(GREEN)Git hooks installed!$(NC)"
 

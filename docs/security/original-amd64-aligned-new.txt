@@ -1,0 +1,46 @@
+
+/tmp/unifi-libstdc++.so:	file format elf64-x86-64
+
+Disassembly of section .text:
+
+00000000000b3c20 <_ZnwmSt11align_val_t>:
+   b3c20: f3 0f 1e fa                  	endbr64
+   b3c24: 41 54                        	pushq	%r12
+   b3c26: 48 8d 46 ff                  	leaq	-0x1(%rsi), %rax
+   b3c2a: 48 89 f2                     	movq	%rsi, %rdx
+   b3c2d: 55                           	pushq	%rbp
+   b3c2e: 48 31 c2                     	xorq	%rax, %rdx
+   b3c31: 53                           	pushq	%rbx
+   b3c32: 48 83 ec 10                  	subq	$0x10, %rsp
+   b3c36: 48 39 d0                     	cmpq	%rdx, %rax
+   b3c39: 0f 83 3c da fe ff            	jae	0xa167b <_ZSt10unexpectedv+0x92>
+   b3c3f: 48 85 ff                     	testq	%rdi, %rdi
+   b3c42: b8 01 00 00 00               	movl	$0x1, %eax
+   b3c47: 4c 8d 64 24 08               	leaq	0x8(%rsp), %r12
+   b3c4c: 48 0f 45 c7                  	cmovneq	%rdi, %rax
+   b3c50: 48 89 c5                     	movq	%rax, %rbp
+   b3c53: b8 08 00 00 00               	movl	$0x8, %eax
+   b3c58: 48 39 c6                     	cmpq	%rax, %rsi
+   b3c5b: 48 0f 43 c6                  	cmovaeq	%rsi, %rax
+   b3c5f: 48 89 c3                     	movq	%rax, %rbx
+   b3c62: eb 14                        	jmp	0xb3c78 <_ZnwmSt11align_val_t+0x58>
+   b3c64: 0f 1f 40 00                  	nopl	(%rax)
+   b3c68: e8 43 a2 fe ff               	callq	0x9deb0 <_ZSt15get_new_handlerv@plt>
+   b3c6d: 48 85 c0                     	testq	%rax, %rax
+   b3c70: 0f 84 33 da fe ff            	je	0xa16a9 <_ZSt10unexpectedv+0xc0>
+   b3c76: ff d0                        	callq	*%rax
+   b3c78: 48 89 ea                     	movq	%rbp, %rdx
+   b3c7b: 48 89 de                     	movq	%rbx, %rsi
+   b3c7e: 4c 89 e7                     	movq	%r12, %rdi
+   b3c81: e8 ca 99 fe ff               	callq	0x9d650 <posix_memalign@plt>
+   b3c86: 85 c0                        	testl	%eax, %eax
+   b3c88: 75 de                        	jne	0xb3c68 <_ZnwmSt11align_val_t+0x48>
+   b3c8a: 48 8b 44 24 08               	movq	0x8(%rsp), %rax
+   b3c8f: 48 85 c0                     	testq	%rax, %rax
+   b3c92: 74 d4                        	je	0xb3c68 <_ZnwmSt11align_val_t+0x48>
+   b3c94: 48 83 c4 10                  	addq	$0x10, %rsp
+   b3c98: 5b                           	popq	%rbx
+   b3c99: 5d                           	popq	%rbp
+   b3c9a: 41 5c                        	popq	%r12
+   b3c9c: c3                           	retq
+   b3c9d: 0f 1f 00                     	nopl	(%rax)

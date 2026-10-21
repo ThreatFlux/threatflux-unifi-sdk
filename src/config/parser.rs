@@ -24,10 +24,9 @@ pub fn load_config(path: impl AsRef<Path>) -> Result<UnifiDeclarativeConfig> {
 
 /// Parse YAML config.
 pub fn parse_yaml(contents: &str) -> Result<UnifiDeclarativeConfig> {
-    let value: serde_yaml_ng::Value =
-        serde_yaml_ng::from_str(contents).map_err(|e| UnifiError::ConfigError(e.to_string()))?;
-    let json_value = serde_json::to_value(value).map_err(UnifiError::JsonError)?;
-    parse_json_value(json_value)
+    let value: JsonValue =
+        serde_saphyr::from_str(contents).map_err(|e| UnifiError::ConfigError(e.to_string()))?;
+    parse_json_value(value)
 }
 
 /// Parse JSON config.
@@ -85,6 +84,42 @@ fn substitute_env(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn yaml_config_preserves_typed_values_and_export_roundtrip() {
+        let config = parse_yaml(
+            r#"unifi:
+  host: https://controller.invalid
+  username: fixture-user
+  password: '${TF_ROLLUP_UNSET_CONFIG_VALUE}'
+  verify_ssl: true
+  timeout_secs: 17
+networks:
+  - name: 'Lab: #1'
+    vlan_enabled: true
+    vlan: 42
+"#,
+        )
+        .expect("valid YAML config");
+        assert!(config.unifi.verify_ssl);
+        assert_eq!(config.unifi.timeout_secs, 17);
+        assert_eq!(config.unifi.site, "default");
+        assert_eq!(config.unifi.password, "${TF_ROLLUP_UNSET_CONFIG_VALUE}");
+        assert_eq!(config.networks[0].name, "Lab: #1");
+        assert_eq!(config.networks[0].vlan, Some(42));
+        let exported = serde_saphyr::to_string(&config).expect("YAML export");
+        let restored = parse_yaml(&exported).expect("exported YAML config");
+        assert_eq!(
+            serde_json::to_value(config).expect("JSON config"),
+            serde_json::to_value(restored).expect("JSON roundtrip")
+        );
+    }
+
+    #[test]
+    fn yaml_config_rejects_duplicate_keys_and_malformed_input() {
+        assert!(parse_yaml("unifi: {host: one, host: two, username: u, password: p}").is_err());
+        assert!(parse_yaml("unifi: [").is_err());
+    }
 
     #[test]
     fn substitute_env_keeps_unknown() {
