@@ -280,7 +280,7 @@ mod tests {
 
         assert_eq!(rule.description, "Block social media");
         assert_eq!(rule.action, "BLOCK");
-        assert!(!rule.app_category_ids.is_empty());
+        assert_eq!(rule.app_category_ids, vec!["social".to_string()]);
         assert!(rule.enabled);
     }
 

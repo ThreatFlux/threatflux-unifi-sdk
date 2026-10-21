@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn yaml_config_preserves_typed_values_and_export_roundtrip() {
         let config = parse_yaml(
-            r#"unifi:
+            r"unifi:
   host: https://controller.invalid
   username: fixture-user
   password: '${TF_ROLLUP_UNSET_CONFIG_VALUE}'
@@ -98,7 +98,7 @@ networks:
   - name: 'Lab: #1'
     vlan_enabled: true
     vlan: 42
-"#,
+",
         )
         .expect("valid YAML config");
         assert!(config.unifi.verify_ssl);

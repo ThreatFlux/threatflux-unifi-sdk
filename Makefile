@@ -101,9 +101,9 @@ fmt-check: ## Check code formatting
 	@echo "$(GREEN)Format check passed!$(NC)"
 
 .PHONY: lint
-lint: ## Run clippy linter
+lint: ## Run clippy with the CI policy
 	@echo "$(CYAN)Running clippy...$(NC)"
-	@$(CARGO) clippy --all-features --all-targets -- -D warnings
+	@$(CARGO) clippy --all-features --all-targets -- $(CLIPPY_FLAGS)
 	@echo "$(GREEN)Linting passed!$(NC)"
 
 .PHONY: lint-strict
