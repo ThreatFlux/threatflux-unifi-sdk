@@ -337,6 +337,16 @@ make ci
 Credentialed controller tests are ignored by default. Their setup and safety
 notes are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+The development container pins Rust 1.99.1 on its existing Debian Bookworm base.
+Its bundled legacy controller has a separate supplier constraint: on
+2026-11-12, Ubiquiti's configured stable Debian package index contained no
+packages, so the controller installation cannot currently be rebuilt from that
+feed. Ubiquiti's [current self-hosting platform](https://ui.com/download/unifi)
+is UniFi OS Server, which requires host services including systemd and Podman.
+Migrating the bundled controller and MongoDB 7.0 installation requires a
+supported container-compatible supplier path. The manual controller helpers and
+credentialed integration targets remain available for an existing controller.
+
 ## Project links
 
 - [Contributing](CONTRIBUTING.md)
