@@ -17,7 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     rm -rf /var/lib/apt/lists/*
 
 # Native musl builder; all CLI features use Rustls, with no OpenSSL requirement.
-FROM rust:1.99.1-alpine3.24@sha256:44819b27be4c97b0e4d7203bd2e02c4820f97700211b6a37fb4c246a2de59383 AS rust-base
+FROM rust:1.100.0-alpine3.24@sha256:de1e0058543a81ed7b046629167db587c67a94bdf37cce14eb27f0ec83baaffb AS rust-base
+
+# Install the source-requested components as root before unprivileged builds.
+ENV RUST_VERSION=1.100.0
+RUN rustup component add --toolchain 1.100.0 clippy rustfmt llvm-tools-preview \
+    && rustup default 1.100.0 \
+    && test "$(rustc --version | cut -d ' ' -f 2)" = "1.100.0"
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -96,7 +102,7 @@ RUN mkdir -p /home/builder/out/bin /home/builder/out/doc /home/builder/runtime-s
     sha256sum /usr/lib/libc.a >> /home/builder/out/doc/native-provenance.txt
 
 # gcr.io/distroless/static-debian13:nonroot, multi-arch index digest
-FROM gcr.io/distroless/static-debian13:nonroot@sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329 AS runtime
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931 AS runtime
 
 ARG VERSION=0.0.0
 ARG BUILD_DATE=unknown
