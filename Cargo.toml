@@ -36,12 +36,12 @@ futures = "0.3.34"
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
-serde-saphyr = "2.0.0"
+serde-saphyr = "2.1.1"
 thiserror = "2.0.21"
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "time", "sync", "net", "process", "signal"] }
 tracing = "0.1.44"
 url = "2.5.8"
-uuid = { version = "1.28.0", features = ["serde", "v4", "v5"] }
+uuid = { version = "1.29.2", features = ["serde", "v4", "v5"] }
 
 [dev-dependencies]
 httpmock = "0.9.0"
