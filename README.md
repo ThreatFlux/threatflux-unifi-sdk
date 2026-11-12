@@ -341,7 +341,7 @@ The development container pins Rust 1.99.1 on its existing Debian Bookworm base.
 Its bundled legacy controller has a separate supplier constraint: on
 2026-11-12, Ubiquiti's configured stable Debian package index contained no
 packages, so the controller installation cannot currently be rebuilt from that
-feed. Ubiquiti's [current self-hosting platform](https://help.ui.com/hc/en-us/articles/34210126298775-Self-Hosting-UniFi)
+feed. Ubiquiti's [current self-hosting platform](https://ui.com/download/unifi)
 is UniFi OS Server, which requires host services including systemd and Podman.
 Migrating the bundled controller and MongoDB 7.0 installation requires a
 supported container-compatible supplier path. The manual controller helpers and
