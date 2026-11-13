@@ -1,5 +1,7 @@
 FROM rust:1.100.0-bookworm@sha256:ade39a710ef85f3506cffcfec3e8a24ba090badef1dff2fb798f71d878833fea
 
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+
 # Install the source-requested components as root before unprivileged builds.
 ENV RUST_VERSION=1.100.0
 RUN rustup component add --toolchain 1.100.0 clippy rustfmt llvm-tools-preview \
