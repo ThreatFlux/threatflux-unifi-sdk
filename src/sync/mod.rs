@@ -195,7 +195,7 @@ async fn sync_networks(
             });
             if !options.dry_run {
                 let created = service.create(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     id_map.insert(desired.name.clone(), id.clone());
                     report
                         .rollback
@@ -230,8 +230,8 @@ async fn sync_networks(
     if id_map.is_empty() {
         let refreshed = service.list().await?;
         for network in refreshed {
-            if let Some(id) = network.id.clone() {
-                id_map.insert(network.name.clone(), id);
+            if let Some(id) = network.id {
+                id_map.insert(network.name, id);
             }
         }
     }
@@ -287,7 +287,7 @@ async fn sync_firewall_groups(
             });
             if !options.dry_run {
                 let created = service.create_group(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     id_map.insert(desired.name.clone(), id.clone());
                     report
                         .rollback
@@ -322,8 +322,8 @@ async fn sync_firewall_groups(
     if id_map.is_empty() {
         let refreshed = service.list_groups().await?;
         for group in refreshed {
-            if let Some(id) = group.id.clone() {
-                id_map.insert(group.name.clone(), id);
+            if let Some(id) = group.id {
+                id_map.insert(group.name, id);
             }
         }
     }
@@ -382,7 +382,7 @@ async fn sync_firewall_rules(
             });
             if !options.dry_run {
                 let created = service.create_rule(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     report
                         .rollback
                         .push(RollbackAction::Delete { resource: ResourceKind::FirewallRule, id });
@@ -460,7 +460,7 @@ async fn sync_port_forwards(
             });
             if !options.dry_run {
                 let created = service.create(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     report
                         .rollback
                         .push(RollbackAction::Delete { resource: ResourceKind::PortForward, id });
@@ -550,7 +550,7 @@ async fn upsert_traffic_rules(
             });
             if !options.dry_run {
                 let created = service.create(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     report
                         .rollback
                         .push(RollbackAction::Delete { resource: ResourceKind::TrafficRule, id });
@@ -645,7 +645,7 @@ async fn sync_vpn(
             });
             if !options.dry_run {
                 let created = service.create_site_vpn(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     report
                         .rollback
                         .push(RollbackAction::Delete { resource: ResourceKind::SiteVpn, id });
@@ -872,7 +872,7 @@ async fn sync_dhcp_reservations(
                 let created = service.create_reservation(&desired_model).await?;
                 report.rollback.push(RollbackAction::Delete {
                     resource: ResourceKind::DhcpReservation,
-                    id: created.mac_address.clone(),
+                    id: created.mac_address,
                 });
             }
         }
@@ -949,7 +949,7 @@ async fn sync_dns(
             });
             if !options.dry_run {
                 let created = service.create(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     report
                         .rollback
                         .push(RollbackAction::Delete { resource: ResourceKind::DnsRecord, id });
@@ -1041,7 +1041,7 @@ async fn sync_client_groups(
             });
             if !options.dry_run {
                 let created = service.create_group(&desired_model).await?;
-                if let Some(id) = created.id.clone() {
+                if let Some(id) = created.id {
                     report
                         .rollback
                         .push(RollbackAction::Delete { resource: ResourceKind::ClientGroup, id });

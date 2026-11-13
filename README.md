@@ -337,7 +337,7 @@ make ci
 Credentialed controller tests are ignored by default. Their setup and safety
 notes are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The development container pins Rust 1.99.1 on its existing Debian Bookworm base.
+The development container pins Rust 1.100.0 on its existing Debian Bookworm base.
 Its bundled legacy controller has a separate supplier constraint: on
 2026-11-12, Ubiquiti's configured stable Debian package index contained no
 packages, so the controller installation cannot currently be rebuilt from that
