@@ -19,13 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 # Native musl builder; all CLI features use Rustls, with no OpenSSL requirement.
 FROM rust:1.100.0-alpine3.24@sha256:de1e0058543a81ed7b046629167db587c67a94bdf37cce14eb27f0ec83baaffb AS rust-base
 
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
 # Install the source-requested components as root before unprivileged builds.
 ENV RUST_VERSION=1.100.0
 RUN rustup component add --toolchain 1.100.0 clippy rustfmt llvm-tools-preview \
     && rustup default 1.100.0 \
     && test "$(rustc --version | cut -d ' ' -f 2)" = "1.100.0"
-
-SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 ARG VERSION=0.0.0
 ARG BUILD_DATE=unknown
