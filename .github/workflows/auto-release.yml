@@ -45,9 +45,11 @@ jobs:
       bump: ${{ github.event.inputs.version_bump || 'auto' }}
       # inputs.* is empty for workflow_run events, so automatic runs stay real.
       dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+      create-pr: true
       required-workflows: CI,Security
-      # The release commit and tag are pushed with a threatflux-automation
-      # GitHub App installation token. An App-pushed tag is an ordinary push,
+      # The threatflux-automation GitHub App opens the release PR. Once it
+      # merges and CI and Security pass on main, the App pushes the tag.
+      # An App-pushed tag is an ordinary push,
       # so release.yml and docker.yml start from their own `push: tags`
       # triggers and the reusable workflow dispatches nothing
       # (dispatch-on-app-token stays false, which avoids running them twice).
