@@ -507,7 +507,7 @@ async fn handle_traffic(connection: &ConnectionArgs, args: TrafficArgs) -> anyho
     let service = TrafficService::new(&client);
     match args.command {
         TrafficCommand::Stats { hours } => {
-            let end = chrono::Utc::now().timestamp();
+            let end = time::OffsetDateTime::now_utc().unix_timestamp();
             let start = end - (i64::from(hours) * 3600);
             let stats = service.get_stats(Timeframe::Custom(start, end)).await?;
             println!("{}", serde_json::to_string_pretty(&stats)?);
