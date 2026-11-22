@@ -89,7 +89,7 @@ jobs:
       actions: write
       contents: write
       pull-requests: write
-    uses: ThreatFlux/github_actions/.github/workflows/reusable-auto-release.yml@c0af79c1d1cbce16cb627d1301942ac668c98beb # v0.7.11
+    uses: ThreatFlux/github_actions/.github/workflows/reusable-auto-release.yml@240529daaf569ee1f5b5e22f683b113ec4e1d62d # v0.7.13
     with:
       bump: ${{ github.event.inputs.version_bump || 'auto' }}
       # inputs.* is empty for workflow_run events, so automatic runs stay real.
@@ -144,7 +144,7 @@ jobs:
           fi
       - name: Create GitHub App installation token
         id: token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ vars.TF_AUTOMATION_APP_ID }}
           private-key: ${{ secrets.TF_AUTOMATION_APP_PRIVATE_KEY }}
