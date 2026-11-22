@@ -12,6 +12,9 @@ from urllib.parse import urlencode
 from container_publish_policy import api
 
 RELEASE_BRANCH = "automation/release"
+STABLE_VERSION = r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+# Match the Release workflow's existing version format for tag publication.
+TAGGED_VERSION = r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?"
 
 
 def matches_proposal(pull: dict, repository: str, source: str, version: str) -> bool:
@@ -77,13 +80,14 @@ def main() -> None:
         print(f"build={str(branch_build).lower()}")
         return
 
-    if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
-        raise ValueError("expected a stable manifest version")
+    tagged = sys.argv[1:] == ["--tagged"]
+    if not re.fullmatch(TAGGED_VERSION if tagged else STABLE_VERSION, version):
+        raise ValueError("invalid manifest version for this release workflow")
     source = os.environ["SOURCE_SHA"]
     repository = os.environ["GITHUB_REPOSITORY"]
     parent = os.environ["SOURCE_PARENT"]
     tree = os.environ["SOURCE_TREE"]
-    if sys.argv[1:] == ["--tagged"]:
+    if tagged:
         require_release_proposal(repository, source, version, parent, tree)
         return
 

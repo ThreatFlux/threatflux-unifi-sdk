@@ -12,6 +12,12 @@ PROPOSAL = "2" * 40
 BASE = "3" * 40
 TREE = "4" * 40
 VERSION = "0.7.13"
+RELEASE_ENV = {
+    "SOURCE_SHA": SOURCE,
+    "GITHUB_REPOSITORY": REPOSITORY,
+    "SOURCE_PARENT": BASE,
+    "SOURCE_TREE": TREE,
+}
 
 
 class ReleaseSourceTests(unittest.TestCase):
@@ -55,14 +61,8 @@ class ReleaseSourceTests(unittest.TestCase):
         self.assertFalse(policy.same_reviewed_tree(self.proposal, BASE, TREE))
 
     def test_automatic_run_preserves_an_open_proposal(self):
-        env = {
-            "SOURCE_SHA": SOURCE,
-            "GITHUB_REPOSITORY": REPOSITORY,
-            "SOURCE_PARENT": BASE,
-            "SOURCE_TREE": TREE,
-        }
         with (
-            patch.dict(policy.os.environ, env),
+            patch.dict(policy.os.environ, RELEASE_ENV),
             patch.object(policy.sys, "argv", ["release_source.py"]),
             patch.object(policy.sys, "stdin", StringIO(f"v{VERSION}\n")),
             patch.object(policy.sys, "stdout", StringIO()) as output,
@@ -73,22 +73,45 @@ class ReleaseSourceTests(unittest.TestCase):
             self.assertEqual(output.getvalue(), "authorized=false\n")
 
     def test_tag_needs_the_exact_proposal_even_after_main_advances(self):
-        env = {
-            "SOURCE_SHA": SOURCE,
-            "GITHUB_REPOSITORY": REPOSITORY,
-            "SOURCE_PARENT": BASE,
-            "SOURCE_TREE": TREE,
-        }
+        for version in (VERSION, "0.7.13-rc1", "0.7.13-Alpha2"):
+            with self.subTest(version=version):
+                self.pull["title"] = f"chore(release): v{version}"
+                self.check_tagged_release(version, [self.pull], self.proposal)
+
+    def check_tagged_release(self, version, candidates, proposal):
         with (
-            patch.dict(policy.os.environ, env),
+            patch.dict(policy.os.environ, RELEASE_ENV),
             patch.object(policy.sys, "argv", ["release_source.py", "--tagged"]),
-            patch.object(policy, "manifest_version", return_value=VERSION),
-            patch.object(
-                policy, "api", side_effect=[[self.pull], self.proposal]
-            ) as api,
+            patch.object(policy, "manifest_version", return_value=version),
+            patch.object(policy, "api", side_effect=[candidates, proposal]) as api,
         ):
             policy.main()
             self.assertNotIn("commits/main", api.call_args_list[0].args[0])
+
+    def test_prerelease_checks_the_version_and_reviewed_tree(self):
+        version = f"{VERSION}-rc1"
+        with self.assertRaisesRegex(ValueError, "merged automated proposal"):
+            self.check_tagged_release(version, [self.pull], self.proposal)
+        self.pull["title"] = f"chore(release): v{version}"
+        self.proposal["commit"]["tree"]["sha"] = "5" * 40
+        with self.assertRaisesRegex(ValueError, "merged automated proposal"):
+            self.check_tagged_release(version, [self.pull], self.proposal)
+
+    def test_invalid_versions_never_reach_proposal_lookup(self):
+        for args, version in (
+            (["--tagged"], f"{VERSION}-rc.1"),
+            (["--tagged"], f"{VERSION}+build1"),
+            ([], f"{VERSION}-rc1"),
+        ):
+            with (
+                self.subTest(args=args, version=version),
+                patch.object(policy.sys, "argv", ["release_source.py", *args]),
+                patch.object(policy, "manifest_version", return_value=version),
+                patch.object(policy, "api") as api,
+            ):
+                with self.assertRaisesRegex(ValueError, "invalid manifest version"):
+                    policy.main()
+                api.assert_not_called()
 
     def test_branch_images_only_publish_when_the_manifest_version_is_unchanged(self):
         for parent_version, expected in [
