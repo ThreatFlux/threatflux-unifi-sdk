@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/docker.yml"
+      - "scripts/release_source.py"
       - "scripts/container_publish_policy.py"
       - "scripts/test_container_publish_policy.py"
       - "Dockerfile"
@@ -39,15 +40,34 @@ env:
   SBOM_MANIFEST_PATH: ${{ vars.RUST_TEMPLATE_SBOM_MANIFEST_PATH || 'Cargo.toml' }}
 
 jobs:
+  source:
+    name: Select container publication source
+    runs-on: ${{ vars.RUST_TEMPLATE_RUNNER_UBUNTU || 'ubuntu-latest' }}
+    outputs:
+      build: ${{ steps.select.outputs.build }}
+    steps:
+      - name: Checkout source and first parent
+        if: github.event_name != 'pull_request' && github.ref_type == 'branch'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Select image source
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if [[ "$EVENT_NAME" == pull_request || "$REF_TYPE" == tag ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/release_source.py --docker >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build Docker Image
-    # Auto Release tags the reviewed version bump after it reaches main and
-    # passes CI and Security. When the main commit carries the standard
-    # "chore: release vX.Y.Z" message, skip its branch build so the tag build
-    # owns publication for that SHA. Every other job depends on this one.
-    if: >-
-      !(github.event_name == 'push' && github.ref_type == 'branch' &&
-      startsWith(github.event.head_commit.message, 'chore: release v'))
+    needs: source
+    if: needs.source.outputs.build == 'true'
     runs-on: ${{ vars.RUST_TEMPLATE_RUNNER_UBUNTU || 'ubuntu-latest' }}
     permissions:
       contents: read

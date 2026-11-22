@@ -445,6 +445,9 @@ mod tests {
         let custom = Timeframe::Custom(-60, 60);
         assert_eq!(custom.start_timestamp(), -60);
         assert_eq!(custom.end_timestamp(), 60);
+        let full_range = Timeframe::Custom(i64::MIN, i64::MAX);
+        assert_eq!(full_range.start_timestamp(), i64::MIN);
+        assert_eq!(full_range.end_timestamp(), i64::MAX);
     }
 
     #[test]

@@ -8,6 +8,12 @@ This file records changes that need more context than a commit subject.
 
 ### Changed
 
+- Replaced the internal Chrono clock with `time`. Public `Timeframe` values
+  and the traffic API still use signed 64-bit Unix seconds. Custom ranges
+  preserve both endpoints across the full `i64` range, and rolling ranges
+  retain their whole-second precision. Existing SDK callers require no
+  migration. The internal clock can represent the previous clock's date range.
+
 - `docker.yml` reads the `DOCKERHUB_*` secrets only when the
   `RUST_TEMPLATE_PUBLISH_DOCKERHUB` variable is `true`; with it unset or
   `false` (the default) no step logs in to Docker Hub or reads its secrets,
