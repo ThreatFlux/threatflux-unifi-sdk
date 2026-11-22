@@ -1,6 +1,7 @@
 """Exercise the release source checks without GitHub credentials."""
 
 import unittest
+from io import BytesIO, TextIOWrapper
 from unittest.mock import patch
 
 import release_source as policy
@@ -34,11 +35,8 @@ class ReleaseSourceTests(unittest.TestCase):
         }
 
     def test_exact_merged_proposal_authorizes_release(self):
-        with (
-            patch.object(policy, "api", side_effect=[[self.pull], self.proposal]),
-            patch.object(policy, "git", side_effect=[BASE, TREE]),
-        ):
-            policy.require_release_proposal(REPOSITORY, SOURCE, VERSION)
+        with patch.object(policy, "api", side_effect=[[self.pull], self.proposal]):
+            policy.require_release_proposal(REPOSITORY, SOURCE, VERSION, BASE, TREE)
 
     def test_later_commits_and_ordinary_version_bumps_do_not_match(self):
         self.assertFalse(
@@ -61,12 +59,13 @@ class ReleaseSourceTests(unittest.TestCase):
             (VERSION, "build=true"),
             ("0.7.12", "build=false"),
         ]:
+            parent_manifest = f'[package]\nversion = "{parent_version}"\n'.encode()
             with (
                 self.subTest(parent_version=parent_version),
+                TextIOWrapper(BytesIO(parent_manifest)) as parent_input,
                 patch.object(policy.sys, "argv", ["release_source.py", "--docker"]),
-                patch.object(
-                    policy, "version_at", side_effect=[VERSION, parent_version]
-                ),
+                patch.object(policy.sys, "stdin", parent_input),
+                patch.object(policy, "manifest_version", return_value=VERSION),
                 patch("builtins.print") as output,
             ):
                 policy.main()

@@ -4,19 +4,11 @@ from __future__ import annotations
 
 import os
 import re
-import subprocess
 import sys
 import tomllib
+from pathlib import Path
 
 from container_publish_policy import api
-
-
-def git(*args: str) -> str:
-    return subprocess.check_output(["git", *args], encoding="utf-8").strip()
-
-
-def version_at(revision: str) -> str:
-    return tomllib.loads(git("show", f"{revision}:Cargo.toml"))["package"]["version"]
 
 
 def matches_proposal(pull: dict, repository: str, source: str, version: str) -> bool:
@@ -40,10 +32,10 @@ def same_reviewed_tree(proposal: dict, parent: str, tree: str) -> bool:
     )
 
 
-def require_release_proposal(repository: str, source: str, version: str) -> None:
+def require_release_proposal(
+    repository: str, source: str, version: str, parent: str, tree: str
+) -> None:
     base = f"repos/{repository}"
-    parent = git("rev-parse", "HEAD^1")
-    tree = git("rev-parse", "HEAD^{tree}")
     candidates = api(f"{base}/commits/{source}/pulls?per_page=100", pages=True)
     for candidate in candidates:
         if not matches_proposal(candidate, repository, source, version):
@@ -56,25 +48,37 @@ def require_release_proposal(repository: str, source: str, version: str) -> None
     )
 
 
+def manifest_version() -> str:
+    with Path("Cargo.toml").open("rb") as manifest:
+        return tomllib.load(manifest)["package"]["version"]
+
+
 def main() -> None:
-    version = version_at("HEAD")
+    version = manifest_version()
     if sys.argv[1:] == ["--docker"]:
         # Only the tag run publishes a version-bump commit. The first-parent
         # comparison works for squash, rebase and merge commits and for retries.
-        branch_build = version == version_at("HEAD^1")
+        parent_version = tomllib.load(sys.stdin.buffer)["package"]["version"]
+        branch_build = version == parent_version
         print(f"build={str(branch_build).lower()}")
         return
 
     if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
         raise ValueError("expected a stable manifest version")
-    source = git("rev-parse", "HEAD")
+    source = os.environ["SOURCE_SHA"]
     repository = os.environ["GITHUB_REPOSITORY"]
     if source != api(f"repos/{repository}/commits/main")["sha"]:
         print("main advanced before release authorization", file=sys.stderr)
         print("authorized=false")
         return
-    if f"v{version}" not in git("tag", "--list", f"v{version}").splitlines():
-        require_release_proposal(repository, source, version)
+    if f"v{version}" not in sys.stdin.read().splitlines():
+        require_release_proposal(
+            repository,
+            source,
+            version,
+            os.environ["SOURCE_PARENT"],
+            os.environ["SOURCE_TREE"],
+        )
     print("authorized=true")
 
 

@@ -58,10 +58,12 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
         run: |
+          set -euo pipefail
           if [[ "$EVENT_NAME" == pull_request || "$REF_TYPE" == tag ]]; then
             echo "build=true" >> "$GITHUB_OUTPUT"
           else
-            python3 scripts/release_source.py --docker >> "$GITHUB_OUTPUT"
+            git show HEAD^1:Cargo.toml |
+              python3 scripts/release_source.py --docker >> "$GITHUB_OUTPUT"
           fi
 
   build:
