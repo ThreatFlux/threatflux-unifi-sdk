@@ -1,7 +1,7 @@
 """Exercise the release source checks without GitHub credentials."""
 
 import unittest
-from io import BytesIO, TextIOWrapper
+from io import BytesIO, StringIO, TextIOWrapper
 from unittest.mock import patch
 
 import release_source as policy
@@ -54,6 +54,42 @@ class ReleaseSourceTests(unittest.TestCase):
         self.proposal["commit"]["verification"]["verified"] = False
         self.assertFalse(policy.same_reviewed_tree(self.proposal, BASE, TREE))
 
+    def test_automatic_run_preserves_an_open_proposal(self):
+        env = {
+            "SOURCE_SHA": SOURCE,
+            "GITHUB_REPOSITORY": REPOSITORY,
+            "SOURCE_PARENT": BASE,
+            "SOURCE_TREE": TREE,
+        }
+        with (
+            patch.dict(policy.os.environ, env),
+            patch.object(policy.sys, "argv", ["release_source.py"]),
+            patch.object(policy.sys, "stdin", StringIO(f"v{VERSION}\n")),
+            patch.object(policy.sys, "stdout", StringIO()) as output,
+            patch.object(policy, "manifest_version", return_value=VERSION),
+            patch.object(policy, "api", side_effect=[{"sha": SOURCE}, [self.pull]]),
+        ):
+            policy.main()
+            self.assertEqual(output.getvalue(), "authorized=false\n")
+
+    def test_tag_needs_the_exact_proposal_even_after_main_advances(self):
+        env = {
+            "SOURCE_SHA": SOURCE,
+            "GITHUB_REPOSITORY": REPOSITORY,
+            "SOURCE_PARENT": BASE,
+            "SOURCE_TREE": TREE,
+        }
+        with (
+            patch.dict(policy.os.environ, env),
+            patch.object(policy.sys, "argv", ["release_source.py", "--tagged"]),
+            patch.object(policy, "manifest_version", return_value=VERSION),
+            patch.object(
+                policy, "api", side_effect=[[self.pull], self.proposal]
+            ) as api,
+        ):
+            policy.main()
+            self.assertNotIn("commits/main", api.call_args_list[0].args[0])
+
     def test_branch_images_only_publish_when_the_manifest_version_is_unchanged(self):
         for parent_version, expected in [
             (VERSION, "build=true"),
@@ -66,10 +102,10 @@ class ReleaseSourceTests(unittest.TestCase):
                 patch.object(policy.sys, "argv", ["release_source.py", "--docker"]),
                 patch.object(policy.sys, "stdin", parent_input),
                 patch.object(policy, "manifest_version", return_value=VERSION),
-                patch("builtins.print") as output,
+                patch.object(policy.sys, "stdout", StringIO()) as output,
             ):
                 policy.main()
-                output.assert_called_once_with(expected)
+                self.assertEqual(output.getvalue(), f"{expected}\n")
 
 
 if __name__ == "__main__":
