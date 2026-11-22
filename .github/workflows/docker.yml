@@ -45,6 +45,7 @@ jobs:
     runs-on: ${{ vars.RUST_TEMPLATE_RUNNER_UBUNTU || 'ubuntu-latest' }}
     outputs:
       build: ${{ steps.select.outputs.build }}
+      publish: ${{ steps.select.outputs.publish }}
     steps:
       - name: Checkout source and first parent
         if: github.event_name != 'pull_request' && github.ref_type == 'branch'
@@ -59,8 +60,10 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
         run: |
           set -euo pipefail
-          if [[ "$EVENT_NAME" == pull_request || "$REF_TYPE" == tag ]]; then
-            echo "build=true" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            printf '%s\n' build=true publish=false >> "$GITHUB_OUTPUT"
+          elif [[ "$REF_TYPE" == tag ]]; then
+            printf '%s\n' build=true publish=true >> "$GITHUB_OUTPUT"
           else
             git show HEAD^1:Cargo.toml |
               python3 scripts/release_source.py --docker >> "$GITHUB_OUTPUT"
@@ -76,6 +79,7 @@ jobs:
       packages: write
       security-events: write
     outputs:
+      publish: ${{ needs.source.outputs.publish }}
       digest: ${{ steps.build.outputs.digest }}
       base_digest: ${{ steps.base_build.outputs.digest }}
       rust_version: ${{ steps.rust_toolchain.outputs.version }}
@@ -127,7 +131,7 @@ jobs:
       # executed step reads them and no docker.io tag is generated.
       - name: Check Docker Hub publishing
         id: dockerhub
-        if: github.event_name != 'pull_request' && env.PUBLISH_DOCKERHUB == 'true'
+        if: needs.source.outputs.publish == 'true' && env.PUBLISH_DOCKERHUB == 'true'
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -168,7 +172,7 @@ jobs:
           version: v0.39.0
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
+        if: needs.source.outputs.publish == 'true'
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -204,7 +208,7 @@ jobs:
             type=raw,value=base-rust-${{ steps.rust_toolchain.outputs.version }}-${{ github.sha }}
       - name: Build base image
         id: base_build
-        if: github.event_name != 'pull_request'
+        if: needs.source.outputs.publish == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -223,8 +227,8 @@ jobs:
             BINARY_PACKAGE=${{ env.BINARY_PACKAGE }}
             SBOM_MANIFEST_PATH=${{ env.SBOM_MANIFEST_PATH }}
 
-      - name: Build and export (PRs)
-        if: github.event_name == 'pull_request'
+      - name: Build and export for validation
+        if: needs.source.outputs.publish == 'false'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
@@ -242,8 +246,26 @@ jobs:
             BINARY_PACKAGE=${{ env.BINARY_PACKAGE }}
             SBOM_MANIFEST_PATH=${{ env.SBOM_MANIFEST_PATH }}
 
-      - name: Build and push runtime image (non-PR)
-        if: github.event_name != 'pull_request'
+      - name: Build and export arm64 for branch validation
+        if: needs.source.outputs.publish == 'false' && github.event_name != 'pull_request'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/arm64
+          tags: ${{ steps.lowercase.outputs.image_name }}:scan-arm64
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=docker,dest=/tmp/image-arm64.tar
+          cache-from: type=gha
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
+            VCS_REF=${{ github.sha }}
+            BINARY_NAME=${{ env.BINARY_NAME }}
+            BINARY_PACKAGE=${{ env.BINARY_PACKAGE }}
+            SBOM_MANIFEST_PATH=${{ env.SBOM_MANIFEST_PATH }}
+
+      - name: Build and push runtime image
+        if: needs.source.outputs.publish == 'true'
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -269,7 +291,9 @@ jobs:
       - name: Smoke test image
         env:
           EVENT_NAME: ${{ github.event_name }}
+          PUBLISH: ${{ needs.source.outputs.publish }}
           PR_IMAGE: ${{ steps.lowercase.outputs.image_name }}:scan
+          ARM64_IMAGE: ${{ steps.lowercase.outputs.image_name }}:scan-arm64
           PUSHED_IMAGE: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.image_name }}@${{ steps.build.outputs.digest }}
           PLATFORMS: ${{ steps.platforms.outputs.value }}
         run: |
@@ -294,9 +318,13 @@ jobs:
             echo "Runs as USER ${user}"
             echo "::endgroup::"
           }
-          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+          if [[ "${PUBLISH}" == "false" ]]; then
             docker load -i /tmp/image.tar
             smoke_test linux/amd64 "${PR_IMAGE}"
+            if [[ "${EVENT_NAME}" != "pull_request" ]]; then
+              docker load -i /tmp/image-arm64.tar
+              smoke_test linux/arm64 "${ARM64_IMAGE}"
+            fi
           else
             IFS=',' read -ra platforms <<< "${PLATFORMS}"
             for platform in "${platforms[@]}"; do
@@ -310,7 +338,7 @@ jobs:
           fi
 
       - name: Upload image artifact
-        if: github.event_name == 'pull_request'
+        if: needs.source.outputs.publish == 'false'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: docker-image
@@ -325,15 +353,15 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - name: Download image (PRs)
-        if: github.event_name == 'pull_request'
+      - name: Download validation image
+        if: needs.build.outputs.publish == 'false'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: docker-image
           path: /tmp
 
-      - name: Load image (PRs)
-        if: github.event_name == 'pull_request'
+      - name: Load validation image
+        if: needs.build.outputs.publish == 'false'
         run: docker load -i /tmp/image.tar
 
       - name: Get short SHA
@@ -341,7 +369,7 @@ jobs:
         run: echo "short=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to registry
-        if: github.event_name != 'pull_request'
+        if: needs.build.outputs.publish == 'true'
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ${{ env.REGISTRY }}
@@ -349,7 +377,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull image
-        if: github.event_name != 'pull_request'
+        if: needs.build.outputs.publish == 'true'
         run: docker pull ${{ env.REGISTRY }}/${{ needs.build.outputs.image_name }}@${{ needs.build.outputs.digest }}
 
       - name: Run Trivy scanner
@@ -357,7 +385,7 @@ jobs:
         with:
           version: v0.76.2
           exit-code: "1"
-          image-ref: ${{ github.event_name == 'pull_request' && format('{0}:scan', needs.build.outputs.image_name) || format('{0}/{1}@{2}', env.REGISTRY, needs.build.outputs.image_name, needs.build.outputs.digest) }}
+          image-ref: ${{ needs.build.outputs.publish == 'false' && format('{0}:scan', needs.build.outputs.image_name) || format('{0}/{1}@{2}', env.REGISTRY, needs.build.outputs.image_name, needs.build.outputs.digest) }}
           format: sarif
           output: trivy-results.sarif
           severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
@@ -373,7 +401,7 @@ jobs:
     name: Sign Container
     needs: [build, scan]
     runs-on: ${{ vars.RUST_TEMPLATE_RUNNER_UBUNTU || 'ubuntu-latest' }}
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: needs.build.outputs.publish == 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: read
       packages: write
@@ -422,7 +450,7 @@ jobs:
     name: Generate SBOM
     needs: build
     runs-on: ${{ vars.RUST_TEMPLATE_RUNNER_UBUNTU || 'ubuntu-latest' }}
-    if: github.event_name != 'pull_request'
+    if: needs.build.outputs.publish == 'true'
     # Read-only: pull the pushed image from GHCR and keep the SBOM as a workflow artifact.
     permissions:
       contents: read
@@ -453,7 +481,7 @@ jobs:
   promote:
     name: Promote verified container aliases
     needs: [build, scan, sign, sbom]
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: needs.build.outputs.publish == 'true' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ${{ vars.RUST_TEMPLATE_RUNNER_UBUNTU || 'ubuntu-latest' }}
     concurrency:
       group: container-alias-promotion

@@ -12,23 +12,40 @@ from urllib.parse import urlencode
 from container_publish_policy import api
 
 RELEASE_BRANCH = "automation/release"
+GRADUATION_PREFIX = "automation/stable-after-prerelease/"
+STABLE_VERSION = r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+# Match the Release workflow's existing version format for tag publication.
+TAGGED_VERSION = r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?"
 
 
-def matches_proposal(pull: dict, repository: str, source: str, version: str) -> bool:
-    return (
+def matches_proposal(
+    pull: dict, repository: str, source: str, version: str, parent: str = ""
+) -> bool:
+    if not (
         pull["merged_at"] is not None
         and pull["merge_commit_sha"] == source
         and pull["base"]["ref"] == "main"
         and (pull["head"]["repo"] or {}).get("full_name") == repository
-        and pull["head"]["ref"] == RELEASE_BRANCH
-        and pull["user"]["login"] == "threatflux-automation[bot]"
         and pull["title"] == f"chore(release): v{version}"
+    ):
+        return False
+    if "-" in version:
+        return (
+            pull["head"]["ref"] == f"release/prerelease/v{version}"
+            and pull["user"].get("type") == "User"
+        )
+    return (
+        pull["head"]["ref"]
+        in {RELEASE_BRANCH, f"{GRADUATION_PREFIX}{parent}/v{version}"}
+        and pull["user"]["login"] == "threatflux-automation[bot]"
     )
 
 
-def same_reviewed_tree(proposal: dict, parent: str, tree: str) -> bool:
+def same_reviewed_tree(
+    proposal: dict, parent: str, tree: str, author: str = "threatflux-automation[bot]"
+) -> bool:
     return (
-        (proposal["author"] or {}).get("login") == "threatflux-automation[bot]"
+        (proposal["author"] or {}).get("login") == author
         and proposal["commit"]["verification"]["verified"]
         and [item["sha"] for item in proposal["parents"]] == [parent]
         and proposal["commit"]["tree"]["sha"] == tree
@@ -41,14 +58,12 @@ def require_release_proposal(
     base = f"repos/{repository}"
     candidates = api(f"{base}/commits/{source}/pulls?per_page=100", pages=True)
     for candidate in candidates:
-        if not matches_proposal(candidate, repository, source, version):
+        if not matches_proposal(candidate, repository, source, version, parent):
             continue
         proposal = api(f"{base}/commits/{candidate['head']['sha']}")
-        if same_reviewed_tree(proposal, parent, tree):
+        if same_reviewed_tree(proposal, parent, tree, candidate["user"]["login"]):
             return
-    raise ValueError(
-        "release requires the merged automated proposal on its reviewed base"
-    )
+    raise ValueError("release requires the exact merged proposal on its reviewed base")
 
 
 def manifest_version() -> str:
@@ -57,33 +72,55 @@ def manifest_version() -> str:
 
 
 def open_proposal(repository: str) -> bool:
-    owner = repository.split("/", 1)[0]
-    query = urlencode(
-        {"state": "open", "base": "main", "head": f"{owner}:{RELEASE_BRANCH}"}
+    query = urlencode({"state": "open", "base": "main", "per_page": 100})
+    pulls = api(f"repos/{repository}/pulls?{query}", pages=True)
+    return any(
+        (pull["head"]["repo"] or {}).get("full_name") == repository
+        and (
+            pull["head"]["ref"] == RELEASE_BRANCH
+            or pull["head"]["ref"].startswith(GRADUATION_PREFIX)
+        )
+        for pull in pulls
     )
-    pulls = api(f"repos/{repository}/pulls?{query}")
-    return bool(pulls)
+
+
+def require_published_prerelease(
+    repository: str, source: str, version: str, version_is_tagged: bool
+) -> None:
+    if not version_is_tagged:
+        raise ValueError(
+            "prerelease must be published before planning a stable release"
+        )
+    release = api(f"repos/{repository}/releases/tags/v{version}")
+    if release["draft"] or not release["prerelease"]:
+        raise ValueError("expected a published GitHub prerelease")
+    ancestry = api(f"repos/{repository}/compare/v{version}...{source}")
+    if ancestry["status"] not in {"ahead", "identical"}:
+        raise ValueError("published prerelease is outside the checked main history")
 
 
 def main() -> None:
     version = manifest_version()
     if sys.argv[1:] == ["--docker"]:
-        # Only the tag run publishes a version-bump commit. The first-parent
-        # comparison works for squash, rebase and merge commits and for retries.
         parent_version = tomllib.load(sys.stdin.buffer)["package"]["version"]
-        branch_build = version == parent_version
-        if not branch_build:
-            print("version-bump images are built by the release tag", file=sys.stderr)
-        print(f"build={str(branch_build).lower()}")
+        publish = version == parent_version
+        build = publish or os.environ["EVENT_NAME"] in {"schedule", "workflow_dispatch"}
+        if not publish:
+            print(
+                "version-bump images are published by the release tag", file=sys.stderr
+            )
+        print(f"build={str(build).lower()}")
+        print(f"publish={str(publish).lower()}")
         return
 
-    if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
-        raise ValueError("expected a stable manifest version")
+    tagged = sys.argv[1:] == ["--tagged"]
+    if not re.fullmatch(TAGGED_VERSION, version):
+        raise ValueError("invalid manifest version for this release workflow")
     source = os.environ["SOURCE_SHA"]
     repository = os.environ["GITHUB_REPOSITORY"]
     parent = os.environ["SOURCE_PARENT"]
     tree = os.environ["SOURCE_TREE"]
-    if sys.argv[1:] == ["--tagged"]:
+    if tagged:
         require_release_proposal(repository, source, version, parent, tree)
         return
 
@@ -91,7 +128,12 @@ def main() -> None:
         print("main advanced before release authorization", file=sys.stderr)
         print("authorized=false")
         return
-    if f"v{version}" not in sys.stdin.read().splitlines():
+    version_is_tagged = f"v{version}" in sys.stdin.read().splitlines()
+    if "-" in version:
+        require_published_prerelease(repository, source, version, version_is_tagged)
+    elif not re.fullmatch(STABLE_VERSION, version):
+        raise ValueError("invalid stable manifest version")
+    if not version_is_tagged:
         require_release_proposal(repository, source, version, parent, tree)
     elif open_proposal(repository):
         # The pinned action can force-update its branch with a lower version.
@@ -103,6 +145,8 @@ def main() -> None:
         print("authorized=false")
         return
     print("authorized=true")
+    if "-" in version:
+        print("graduate=true")
 
 
 if __name__ == "__main__":
