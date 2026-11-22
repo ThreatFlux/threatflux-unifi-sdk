@@ -1619,7 +1619,7 @@ dependencies = [
 
 [[package]]
 name = "threatflux-unifi-sdk"
-version = "0.7.12"
+version = "0.7.13"
 dependencies = [
  "anyhow",
  "clap",
