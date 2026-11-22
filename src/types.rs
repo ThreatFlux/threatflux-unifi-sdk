@@ -299,7 +299,7 @@ impl Timeframe {
     /// Get the start timestamp for this timeframe.
     #[must_use]
     pub fn start_timestamp(&self) -> i64 {
-        let now = chrono::Utc::now().timestamp();
+        let now = time::OffsetDateTime::now_utc().unix_timestamp();
         match self {
             Self::Hour => now - 3600,
             Self::Day => now - 86400,
@@ -315,7 +315,7 @@ impl Timeframe {
     pub fn end_timestamp(&self) -> i64 {
         match self {
             Self::Custom(_, end) => *end,
-            _ => chrono::Utc::now().timestamp(),
+            _ => time::OffsetDateTime::now_utc().unix_timestamp(),
         }
     }
 }
@@ -435,10 +435,19 @@ mod tests {
     #[test]
     fn test_timeframe_timestamps() {
         let day = Timeframe::Day;
-        let now = chrono::Utc::now().timestamp();
-        assert!(day.start_timestamp() < now);
-        assert!(day.end_timestamp() <= now);
-        assert!((day.end_timestamp() - day.start_timestamp() - 86400).abs() < 2);
+        let before = time::OffsetDateTime::now_utc().unix_timestamp();
+        let start = day.start_timestamp();
+        let end = day.end_timestamp();
+        let after = time::OffsetDateTime::now_utc().unix_timestamp();
+        assert!((before..=after).contains(&(start + 86_400)));
+        assert!((before..=after).contains(&end));
+
+        let custom = Timeframe::Custom(-60, 60);
+        assert_eq!(custom.start_timestamp(), -60);
+        assert_eq!(custom.end_timestamp(), 60);
+        let full_range = Timeframe::Custom(i64::MIN, i64::MAX);
+        assert_eq!(full_range.start_timestamp(), i64::MIN);
+        assert_eq!(full_range.end_timestamp(), i64::MAX);
     }
 
     #[test]

@@ -111,6 +111,20 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 Pull requests should explain the change, motivation, compatibility impact,
 security impact, and validation performed.
 
+## Release workflow
+
+The Auto Release workflow opens a version-bump pull request from
+`automation/release`. Review and merge it against the same `main` commit
+used to generate the proposal. Let CI and Security finish on that merge
+before merging another change. Auto Release preserves an open proposal.
+Close an obsolete proposal before requesting a replacement. If the
+version bump lands on a different base or `main` advances before the tag
+is created, revert the stale bump through a reviewed PR so Auto Release
+can propose a fresh version from the current source. Release retries use
+the existing version tag. The tag workflow also owns the release commit's
+container images. To rebuild those images manually, dispatch Docker on
+the release tag.
+
 ## Security issues
 
 Do not open public issues for vulnerabilities. Follow

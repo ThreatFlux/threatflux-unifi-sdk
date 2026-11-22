@@ -43,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Creates or edits the GitHub Release and its tag.
+      pull-requests: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -124,26 +125,30 @@ jobs:
             IS_PRERELEASE="true"
           fi
 
-          # Never attach assets or a crate built from one commit to a tag that
-          # names another (checkout fetched all tags with fetch-depth: 0).
+          # Auto Release creates the tag after the reviewed proposal and main
+          # checks pass. A manual retry must use that same tagged source.
           SOURCE_SHA="$(git rev-parse --verify HEAD)"
-          if TAG_SHA="$(git rev-parse -q --verify "refs/tags/${TAG}^{commit}")"; then
-            if [[ "${TAG_SHA}" != "${SOURCE_SHA}" ]]; then
-              echo "::error::Tag ${TAG} points at ${TAG_SHA}, not the source commit ${SOURCE_SHA}. Dispatch on the tag (gh workflow run release.yml --ref ${TAG}) to rebuild it."
-              exit 1
-            fi
+          if ! TAG_SHA="$(git rev-parse -q --verify "refs/tags/${TAG}^{commit}")" || [[ "${TAG_SHA}" != "${SOURCE_SHA}" ]]; then
+            echo "::error::Run Auto Release to create ${TAG}, then dispatch on that tag to rebuild it."
+            exit 1
           fi
+          if ! git merge-base --is-ancestor "$SOURCE_SHA" refs/remotes/origin/main; then
+            echo "::error::Release source is outside protected main history."
+            exit 1
+          fi
+          SOURCE_PARENT="$(git rev-parse HEAD^1)"
+          SOURCE_TREE="$(git rev-parse 'HEAD^{tree}')"
+          export SOURCE_SHA SOURCE_PARENT SOURCE_TREE
+          python3 scripts/release_source.py --tagged
 
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             # Keep the notes auto-release (or a maintainer) already wrote.
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE"
           else
-            # --target only applies when the tag does not exist yet; it pins a
-            # newly created tag to the commit this run builds.
             if [[ "${IS_PRERELEASE}" == "true" ]]; then
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title "$TITLE" --notes-file release_notes.md --prerelease
+              gh release create "$TAG" --verify-tag --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file release_notes.md --prerelease
             else
-              gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$SOURCE_SHA" --title "$TITLE" --notes-file release_notes.md
+              gh release create "$TAG" --verify-tag --repo "$GITHUB_REPOSITORY" --title "$TITLE" --notes-file release_notes.md
             fi
           fi
 
@@ -202,9 +207,9 @@ jobs:
         shell: bash
         run: |
           if [[ -n "${BINARY_PACKAGE}" ]]; then
-            cross build --release --target ${{ matrix.target }} -p "${BINARY_PACKAGE}" --bin "${BINARY_NAME}" --all-features
+            cross build --locked --release --target ${{ matrix.target }} -p "${BINARY_PACKAGE}" --bin "${BINARY_NAME}" --all-features
           else
-            cross build --release --target ${{ matrix.target }} --bin "${BINARY_NAME}" --all-features || cross build --release --target ${{ matrix.target }} --all-features
+            cross build --locked --release --target ${{ matrix.target }} --bin "${BINARY_NAME}" --all-features || cross build --locked --release --target ${{ matrix.target }} --all-features
           fi
 
       - name: Build (native)
@@ -212,9 +217,9 @@ jobs:
         shell: bash
         run: |
           if [[ -n "${BINARY_PACKAGE}" ]]; then
-            cargo build --release --target ${{ matrix.target }} -p "${BINARY_PACKAGE}" --bin "${BINARY_NAME}" --all-features
+            cargo build --locked --release --target ${{ matrix.target }} -p "${BINARY_PACKAGE}" --bin "${BINARY_NAME}" --all-features
           else
-            cargo build --release --target ${{ matrix.target }} --bin "${BINARY_NAME}" --all-features || cargo build --release --target ${{ matrix.target }} --all-features
+            cargo build --locked --release --target ${{ matrix.target }} --bin "${BINARY_NAME}" --all-features || cargo build --locked --release --target ${{ matrix.target }} --all-features
           fi
 
       - name: Package (Unix)
