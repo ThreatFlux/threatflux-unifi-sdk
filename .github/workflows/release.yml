@@ -43,6 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Creates or edits the GitHub Release and its tag.
+      pull-requests: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -131,6 +132,14 @@ jobs:
             echo "::error::Run Auto Release to create ${TAG}, then dispatch on that tag to rebuild it."
             exit 1
           fi
+          if ! git merge-base --is-ancestor "$SOURCE_SHA" refs/remotes/origin/main; then
+            echo "::error::Release source is outside protected main history."
+            exit 1
+          fi
+          SOURCE_PARENT="$(git rev-parse HEAD^1)"
+          SOURCE_TREE="$(git rev-parse 'HEAD^{tree}')"
+          export SOURCE_SHA SOURCE_PARENT SOURCE_TREE
+          python3 scripts/release_source.py --tagged
 
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             # Keep the notes auto-release (or a maintainer) already wrote.
