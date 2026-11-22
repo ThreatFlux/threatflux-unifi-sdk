@@ -66,6 +66,9 @@ jobs:
       - name: Check container publication ordering
         run: python3 -m unittest discover -s scripts -p test_container_publish_policy.py
 
+      - name: Check release source authorization
+        run: python3 -m unittest discover -s scripts -p test_release_source.py
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
