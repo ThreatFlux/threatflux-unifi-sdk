@@ -18,20 +18,30 @@ TAGGED_VERSION = r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?"
 
 
 def matches_proposal(pull: dict, repository: str, source: str, version: str) -> bool:
-    return (
+    if not (
         pull["merged_at"] is not None
         and pull["merge_commit_sha"] == source
         and pull["base"]["ref"] == "main"
         and (pull["head"]["repo"] or {}).get("full_name") == repository
-        and pull["head"]["ref"] == RELEASE_BRANCH
-        and pull["user"]["login"] == "threatflux-automation[bot]"
         and pull["title"] == f"chore(release): v{version}"
+    ):
+        return False
+    if "-" in version:
+        return (
+            pull["head"]["ref"] == f"release/prerelease/v{version}"
+            and pull["user"].get("type") == "User"
+        )
+    return (
+        pull["head"]["ref"] == RELEASE_BRANCH
+        and pull["user"]["login"] == "threatflux-automation[bot]"
     )
 
 
-def same_reviewed_tree(proposal: dict, parent: str, tree: str) -> bool:
+def same_reviewed_tree(
+    proposal: dict, parent: str, tree: str, author: str = "threatflux-automation[bot]"
+) -> bool:
     return (
-        (proposal["author"] or {}).get("login") == "threatflux-automation[bot]"
+        (proposal["author"] or {}).get("login") == author
         and proposal["commit"]["verification"]["verified"]
         and [item["sha"] for item in proposal["parents"]] == [parent]
         and proposal["commit"]["tree"]["sha"] == tree
@@ -47,11 +57,9 @@ def require_release_proposal(
         if not matches_proposal(candidate, repository, source, version):
             continue
         proposal = api(f"{base}/commits/{candidate['head']['sha']}")
-        if same_reviewed_tree(proposal, parent, tree):
+        if same_reviewed_tree(proposal, parent, tree, candidate["user"]["login"]):
             return
-    raise ValueError(
-        "release requires the merged automated proposal on its reviewed base"
-    )
+    raise ValueError("release requires the exact merged proposal on its reviewed base")
 
 
 def manifest_version() -> str:
@@ -71,13 +79,15 @@ def open_proposal(repository: str) -> bool:
 def main() -> None:
     version = manifest_version()
     if sys.argv[1:] == ["--docker"]:
-        # Only the tag run publishes a version-bump commit. The first-parent
-        # comparison works for squash, rebase and merge commits and for retries.
         parent_version = tomllib.load(sys.stdin.buffer)["package"]["version"]
-        branch_build = version == parent_version
-        if not branch_build:
-            print("version-bump images are built by the release tag", file=sys.stderr)
-        print(f"build={str(branch_build).lower()}")
+        publish = version == parent_version
+        build = publish or os.environ["EVENT_NAME"] in {"schedule", "workflow_dispatch"}
+        if not publish:
+            print(
+                "version-bump images are published by the release tag", file=sys.stderr
+            )
+        print(f"build={str(build).lower()}")
+        print(f"publish={str(publish).lower()}")
         return
 
     tagged = sys.argv[1:] == ["--tagged"]

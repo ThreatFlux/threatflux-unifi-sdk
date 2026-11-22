@@ -73,10 +73,14 @@ class ReleaseSourceTests(unittest.TestCase):
             self.assertEqual(output.getvalue(), "authorized=false\n")
 
     def test_tag_needs_the_exact_proposal_even_after_main_advances(self):
-        for version in (VERSION, "0.7.13-rc1", "0.7.13-Alpha2"):
-            with self.subTest(version=version):
-                self.pull["title"] = f"chore(release): v{version}"
-                self.check_tagged_release(version, [self.pull], self.proposal)
+        self.check_tagged_release(VERSION, [self.pull], self.proposal)
+
+    def set_prerelease_proposal(self, version):
+        author = {"login": "maintainer", "type": "User"}
+        self.pull["title"] = f"chore(release): v{version}"
+        self.pull["head"]["ref"] = f"release/prerelease/v{version}"
+        self.pull["user"] = author
+        self.proposal["author"] = author
 
     def check_tagged_release(self, version, candidates, proposal):
         with (
@@ -90,11 +94,24 @@ class ReleaseSourceTests(unittest.TestCase):
 
     def test_prerelease_checks_the_version_and_reviewed_tree(self):
         version = f"{VERSION}-rc1"
-        with self.assertRaisesRegex(ValueError, "merged automated proposal"):
+        with self.assertRaisesRegex(ValueError, "exact merged proposal"):
             self.check_tagged_release(version, [self.pull], self.proposal)
-        self.pull["title"] = f"chore(release): v{version}"
+        self.set_prerelease_proposal(version)
+        self.pull["head"]["ref"] = "release/prerelease/v0.7.13-rc2"
+        with self.assertRaisesRegex(ValueError, "exact merged proposal"):
+            self.check_tagged_release(version, [self.pull], self.proposal)
+        self.set_prerelease_proposal(version)
         self.proposal["commit"]["tree"]["sha"] = "5" * 40
-        with self.assertRaisesRegex(ValueError, "merged automated proposal"):
+        with self.assertRaisesRegex(ValueError, "exact merged proposal"):
+            self.check_tagged_release(version, [self.pull], self.proposal)
+
+    def test_tagged_prerelease_accepts_a_signed_same_repo_proposal(self):
+        for version in ("0.7.13-rc1", "0.7.13-Alpha2"):
+            with self.subTest(version=version):
+                self.set_prerelease_proposal(version)
+                self.check_tagged_release(version, [self.pull], self.proposal)
+        self.proposal["commit"]["verification"]["verified"] = False
+        with self.assertRaisesRegex(ValueError, "exact merged proposal"):
             self.check_tagged_release(version, [self.pull], self.proposal)
 
     def test_invalid_versions_never_reach_proposal_lookup(self):
@@ -113,22 +130,37 @@ class ReleaseSourceTests(unittest.TestCase):
                     policy.main()
                 api.assert_not_called()
 
-    def test_branch_images_only_publish_when_the_manifest_version_is_unchanged(self):
-        for parent_version, expected in [
-            (VERSION, "build=true"),
-            ("0.7.12", "build=false"),
-        ]:
-            parent_manifest = f'[package]\nversion = "{parent_version}"\n'.encode()
+    def test_docker_branch_events_at_a_release_commit(self):
+        for event, build in (
+            ("push", "false"),
+            ("schedule", "true"),
+            ("workflow_dispatch", "true"),
+        ):
+            parent_manifest = b'[package]\nversion = "0.7.12"\n'
             with (
-                self.subTest(parent_version=parent_version),
+                self.subTest(event=event),
                 TextIOWrapper(BytesIO(parent_manifest)) as parent_input,
+                patch.dict(policy.os.environ, {"EVENT_NAME": event}),
                 patch.object(policy.sys, "argv", ["release_source.py", "--docker"]),
                 patch.object(policy.sys, "stdin", parent_input),
                 patch.object(policy, "manifest_version", return_value=VERSION),
                 patch.object(policy.sys, "stdout", StringIO()) as output,
             ):
                 policy.main()
-                self.assertEqual(output.getvalue(), f"{expected}\n")
+                self.assertEqual(output.getvalue(), f"build={build}\npublish=false\n")
+
+    def test_docker_ordinary_branch_push_still_builds_and_publishes(self):
+        manifest = f'[package]\nversion = "{VERSION}"\n'.encode()
+        with (
+            TextIOWrapper(BytesIO(manifest)) as parent_input,
+            patch.dict(policy.os.environ, {"EVENT_NAME": "push"}),
+            patch.object(policy.sys, "argv", ["release_source.py", "--docker"]),
+            patch.object(policy.sys, "stdin", parent_input),
+            patch.object(policy, "manifest_version", return_value=VERSION),
+            patch.object(policy.sys, "stdout", StringIO()) as output,
+        ):
+            policy.main()
+            self.assertEqual(output.getvalue(), "build=true\npublish=true\n")
 
 
 if __name__ == "__main__":

@@ -122,8 +122,18 @@ version bump lands on a different base or `main` advances before the tag
 is created, revert the stale bump through a reviewed PR so Auto Release
 can propose a fresh version from the current source. Release retries use
 the existing version tag. The tag workflow also owns the release commit's
-container images. To rebuild those images manually, dispatch Docker on
-the release tag.
+container images. Scheduled and manually dispatched branch runs still
+build and validate both architectures when main is on a version bump.
+To republish the versioned images, dispatch Docker on the release tag.
+
+For a prerelease such as `0.7.13-rc1`, open a signed version proposal titled
+`chore(release): v0.7.13-rc1` from the same repository's
+`release/prerelease/v0.7.13-rc1` branch. Use a single signed commit on the
+reviewed main base and obtain the normal independent approval and hosted
+checks before merging. After checks pass on the merge commit, an existing
+authorized release maintainer may tag that reviewed commit. The Release
+workflow verifies the proposal, tag, and source, marks the GitHub release as
+a prerelease, and skips crates.io publication.
 
 ## Security issues
 
