@@ -47,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       authorized: ${{ steps.source.outputs.authorized }}
+      graduate: ${{ steps.source.outputs.graduate }}
     steps:
       - name: Checkout protected main
         if: '!inputs.dry_run'
@@ -92,8 +93,10 @@ jobs:
     with:
       bump: ${{ github.event.inputs.version_bump || 'auto' }}
       # inputs.* is empty for workflow_run events, so automatic runs stay real.
-      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
-      create-pr: true
+      # The pinned runtime ignores prerelease tags when it looks for a
+      # published version. Use its read-only bump plan for this transition.
+      dry-run: ${{ inputs.dry_run || needs.authorize.outputs.graduate == 'true' }}
+      create-pr: ${{ needs.authorize.outputs.graduate != 'true' }}
       release-branch: automation/release
       required-workflows: CI,Security
       # The threatflux-automation GitHub App opens the release PR. Once it
@@ -105,3 +108,77 @@ jobs:
       github-app-id: ${{ vars.TF_AUTOMATION_APP_ID }}
     secrets:
       github-app-private-key: ${{ secrets.TF_AUTOMATION_APP_PRIVATE_KEY }}
+
+  propose-stable:
+    needs: [authorize, release]
+    if: needs.authorize.outputs.graduate == 'true' && needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prepare proposal from checked main
+        id: proposal
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SOURCE: ${{ github.event.workflow_run.head_sha || github.sha }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_SOURCE" ]]
+          for workflow in ci.yml security.yml; do
+            gh run list --workflow "$workflow" --event push --branch main \
+              --commit "$EXPECTED_SOURCE" --limit 100 --json attempt,createdAt,startedAt,status,conclusion \
+            | jq -e 'length > 0 and length < 100 and all(.[]; .status == "completed")
+              and (map(. + {checkTime: (if .attempt == 1 then .createdAt else .startedAt end)})
+              | (map(.checkTime) | max) as $latest
+              | all(.[] | select(.checkTime == $latest); .conclusion == "success"))' >/dev/null
+          done
+          python3 scripts/stable_after_prerelease.py >> "$GITHUB_OUTPUT"
+          if git show-ref --verify --quiet "refs/tags/v$VERSION"; then
+            echo "::error::The planned stable version is already tagged"
+            exit 1
+          fi
+      - name: Create GitHub App installation token
+        id: token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.TF_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.TF_AUTOMATION_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Open stable version proposal
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          SOURCE: ${{ github.event.workflow_run.head_sha || github.sha }}
+          BRANCH: ${{ steps.proposal.outputs.branch }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" == "$SOURCE" ]]
+          prior="$(git rev-parse --verify --quiet "refs/remotes/origin/$BRANCH" || true)"
+          if [[ -z "$prior" ]]; then
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/heads/$BRANCH" -f sha="$SOURCE" --silent
+            prior="$SOURCE"
+          fi
+          if [[ "$prior" == "$SOURCE" ]]; then
+            gh api graphql --input "$RUNNER_TEMP/stable-proposal.json" \
+              | jq -e '.data.createCommitOnBranch.commit |
+                .signature.isValid and .author.user.login == "threatflux-automation[bot]"' >/dev/null
+          else
+            # Recover an interrupted proposal only when the existing signed
+            # branch contains the same proposal commit and no other changes.
+            [[ "$(git show -s --format=%P "$prior")" == "$SOURCE" ]]
+            [[ "$(git diff --name-only "$SOURCE" "$prior")" == $'Cargo.lock\nCargo.toml' ]]
+            for file in Cargo.toml Cargo.lock; do
+              git show "$prior:$file" | cmp - "$RUNNER_TEMP/stable-proposal-$file"
+            done
+            gh api "repos/$GITHUB_REPOSITORY/commits/$prior" \
+              | jq -e '.commit.verification.verified and .author.login == "threatflux-automation[bot]"' >/dev/null
+          fi
+          [[ "$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)" == "$SOURCE" ]]
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
+            --title "chore(release): v$VERSION" --body "Propose the stable release after the published prerelease on $SOURCE."

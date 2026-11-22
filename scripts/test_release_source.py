@@ -5,6 +5,7 @@ from io import BytesIO, StringIO, TextIOWrapper
 from unittest.mock import patch
 
 import release_source as policy
+from stable_after_prerelease import version_files
 
 REPOSITORY = "ThreatFlux/threatflux-unifi-sdk"
 SOURCE = "1" * 40
@@ -118,7 +119,6 @@ class ReleaseSourceTests(unittest.TestCase):
         for args, version in (
             (["--tagged"], f"{VERSION}-rc.1"),
             (["--tagged"], f"{VERSION}+build1"),
-            ([], f"{VERSION}-rc1"),
         ):
             with (
                 self.subTest(args=args, version=version),
@@ -129,6 +129,59 @@ class ReleaseSourceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "invalid manifest version"):
                     policy.main()
                 api.assert_not_called()
+
+    def test_published_prerelease_can_plan_a_stable_proposal(self):
+        prerelease = f"{VERSION}-rc1"
+        with (
+            patch.dict(policy.os.environ, RELEASE_ENV),
+            patch.object(policy.sys, "argv", ["release_source.py"]),
+            patch.object(policy.sys, "stdin", StringIO(f"v{prerelease}\n")),
+            patch.object(policy.sys, "stdout", StringIO()) as output,
+            patch.object(policy, "manifest_version", return_value=prerelease),
+            patch.object(
+                policy,
+                "api",
+                side_effect=[
+                    {"sha": SOURCE},
+                    {"draft": False, "prerelease": True},
+                    {"status": "ahead"},
+                    [],
+                ],
+            ),
+        ):
+            policy.main()
+            self.assertEqual(output.getvalue(), "authorized=true\ngraduate=true\n")
+
+    def test_untagged_prerelease_cannot_plan_a_stable_proposal(self):
+        with (
+            patch.dict(policy.os.environ, RELEASE_ENV),
+            patch.object(policy.sys, "argv", ["release_source.py"]),
+            patch.object(policy.sys, "stdin", StringIO()),
+            patch.object(policy, "manifest_version", return_value=f"{VERSION}-rc1"),
+            patch.object(policy, "api", return_value={"sha": SOURCE}) as api,
+        ):
+            with self.assertRaisesRegex(ValueError, "prerelease must be published"):
+                policy.main()
+            api.assert_called_once()
+
+    def test_stable_after_prerelease_proposal_matches_its_exact_parent(self):
+        self.pull["head"]["ref"] = f"{policy.GRADUATION_PREFIX}{BASE}/v{VERSION}"
+        self.assertTrue(
+            policy.matches_proposal(self.pull, REPOSITORY, SOURCE, VERSION, BASE)
+        )
+        self.assertFalse(
+            policy.matches_proposal(self.pull, REPOSITORY, SOURCE, VERSION, TREE)
+        )
+
+    def test_stable_proposal_rewrites_only_the_local_cargo_version(self):
+        manifest = '[package]\nname = "sdk"\nversion = "0.7.13-rc1"\n[dependencies]\nsdk-helper = "0.7.13-rc1"\n'
+        lock = (
+            'version = 4\n\n[[package]]\nname = "sdk"\nversion = "0.7.13-rc1"\n\n'
+            '[[package]]\nname = "sdk-helper"\nversion = "0.7.13-rc1"\n'
+        )
+        updated = version_files(manifest, lock, VERSION)
+        self.assertEqual(updated["Cargo.toml"], manifest.replace("-rc1", "", 1))
+        self.assertEqual(updated["Cargo.lock"], lock.replace("-rc1", "", 1))
 
     def test_docker_branch_events_at_a_release_commit(self):
         for event, build in (

@@ -134,6 +134,9 @@ checks before merging. After checks pass on the merge commit, an existing
 authorized release maintainer may tag that reviewed commit. The Release
 workflow verifies the proposal, tag, and source, marks the GitHub release as
 a prerelease, and skips crates.io publication.
+After that prerelease is published, Auto Release can calculate a stable
+version from checked main and open a signed stable proposal for the same
+protected review. An explicit patch request can also start that proposal.
 
 ## Security issues
 

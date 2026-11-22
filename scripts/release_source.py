@@ -12,12 +12,15 @@ from urllib.parse import urlencode
 from container_publish_policy import api
 
 RELEASE_BRANCH = "automation/release"
+GRADUATION_PREFIX = "automation/stable-after-prerelease/"
 STABLE_VERSION = r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
 # Match the Release workflow's existing version format for tag publication.
 TAGGED_VERSION = r"[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9]+)?"
 
 
-def matches_proposal(pull: dict, repository: str, source: str, version: str) -> bool:
+def matches_proposal(
+    pull: dict, repository: str, source: str, version: str, parent: str = ""
+) -> bool:
     if not (
         pull["merged_at"] is not None
         and pull["merge_commit_sha"] == source
@@ -32,7 +35,8 @@ def matches_proposal(pull: dict, repository: str, source: str, version: str) -> 
             and pull["user"].get("type") == "User"
         )
     return (
-        pull["head"]["ref"] == RELEASE_BRANCH
+        pull["head"]["ref"]
+        in {RELEASE_BRANCH, f"{GRADUATION_PREFIX}{parent}/v{version}"}
         and pull["user"]["login"] == "threatflux-automation[bot]"
     )
 
@@ -54,7 +58,7 @@ def require_release_proposal(
     base = f"repos/{repository}"
     candidates = api(f"{base}/commits/{source}/pulls?per_page=100", pages=True)
     for candidate in candidates:
-        if not matches_proposal(candidate, repository, source, version):
+        if not matches_proposal(candidate, repository, source, version, parent):
             continue
         proposal = api(f"{base}/commits/{candidate['head']['sha']}")
         if same_reviewed_tree(proposal, parent, tree, candidate["user"]["login"]):
@@ -68,12 +72,16 @@ def manifest_version() -> str:
 
 
 def open_proposal(repository: str) -> bool:
-    owner = repository.split("/", 1)[0]
-    query = urlencode(
-        {"state": "open", "base": "main", "head": f"{owner}:{RELEASE_BRANCH}"}
+    query = urlencode({"state": "open", "base": "main", "per_page": 100})
+    pulls = api(f"repos/{repository}/pulls?{query}", pages=True)
+    return any(
+        (pull["head"]["repo"] or {}).get("full_name") == repository
+        and (
+            pull["head"]["ref"] == RELEASE_BRANCH
+            or pull["head"]["ref"].startswith(GRADUATION_PREFIX)
+        )
+        for pull in pulls
     )
-    pulls = api(f"repos/{repository}/pulls?{query}")
-    return bool(pulls)
 
 
 def main() -> None:
@@ -91,7 +99,7 @@ def main() -> None:
         return
 
     tagged = sys.argv[1:] == ["--tagged"]
-    if not re.fullmatch(TAGGED_VERSION if tagged else STABLE_VERSION, version):
+    if not re.fullmatch(TAGGED_VERSION, version):
         raise ValueError("invalid manifest version for this release workflow")
     source = os.environ["SOURCE_SHA"]
     repository = os.environ["GITHUB_REPOSITORY"]
@@ -105,7 +113,21 @@ def main() -> None:
         print("main advanced before release authorization", file=sys.stderr)
         print("authorized=false")
         return
-    if f"v{version}" not in sys.stdin.read().splitlines():
+    version_is_tagged = f"v{version}" in sys.stdin.read().splitlines()
+    if "-" in version:
+        if not version_is_tagged:
+            raise ValueError(
+                "prerelease must be published before planning a stable release"
+            )
+        release = api(f"repos/{repository}/releases/tags/v{version}")
+        if release["draft"] or not release["prerelease"]:
+            raise ValueError("expected a published GitHub prerelease")
+        ancestry = api(f"repos/{repository}/compare/v{version}...{source}")
+        if ancestry["status"] not in {"ahead", "identical"}:
+            raise ValueError("published prerelease is outside the checked main history")
+    elif not re.fullmatch(STABLE_VERSION, version):
+        raise ValueError("invalid stable manifest version")
+    if not version_is_tagged:
         require_release_proposal(repository, source, version, parent, tree)
     elif open_proposal(repository):
         # The pinned action can force-update its branch with a lower version.
@@ -117,6 +139,8 @@ def main() -> None:
         print("authorized=false")
         return
     print("authorized=true")
+    if "-" in version:
+        print("graduate=true")
 
 
 if __name__ == "__main__":
