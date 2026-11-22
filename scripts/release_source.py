@@ -84,6 +84,21 @@ def open_proposal(repository: str) -> bool:
     )
 
 
+def require_published_prerelease(
+    repository: str, source: str, version: str, version_is_tagged: bool
+) -> None:
+    if not version_is_tagged:
+        raise ValueError(
+            "prerelease must be published before planning a stable release"
+        )
+    release = api(f"repos/{repository}/releases/tags/v{version}")
+    if release["draft"] or not release["prerelease"]:
+        raise ValueError("expected a published GitHub prerelease")
+    ancestry = api(f"repos/{repository}/compare/v{version}...{source}")
+    if ancestry["status"] not in {"ahead", "identical"}:
+        raise ValueError("published prerelease is outside the checked main history")
+
+
 def main() -> None:
     version = manifest_version()
     if sys.argv[1:] == ["--docker"]:
@@ -115,16 +130,7 @@ def main() -> None:
         return
     version_is_tagged = f"v{version}" in sys.stdin.read().splitlines()
     if "-" in version:
-        if not version_is_tagged:
-            raise ValueError(
-                "prerelease must be published before planning a stable release"
-            )
-        release = api(f"repos/{repository}/releases/tags/v{version}")
-        if release["draft"] or not release["prerelease"]:
-            raise ValueError("expected a published GitHub prerelease")
-        ancestry = api(f"repos/{repository}/compare/v{version}...{source}")
-        if ancestry["status"] not in {"ahead", "identical"}:
-            raise ValueError("published prerelease is outside the checked main history")
+        require_published_prerelease(repository, source, version, version_is_tagged)
     elif not re.fullmatch(STABLE_VERSION, version):
         raise ValueError("invalid stable manifest version")
     if not version_is_tagged:
