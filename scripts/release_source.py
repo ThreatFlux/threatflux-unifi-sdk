@@ -41,13 +41,31 @@ def matches_proposal(
     )
 
 
+def proposal_parents_match(parents: list[str], parent: str, refreshed: bool) -> bool:
+    """Accept [base], or [base, previous] for a refreshed automation/release proposal.
+
+    Since github_actions v0.7.15 the release runtime keeps the previous proposal
+    as a second parent when it refreshes automation/release, so the branch update
+    is a fast-forward. The tree is still built from the reviewed base alone.
+    """
+    if parents == [parent]:
+        return True
+    return refreshed and len(parents) == 2 and parents[0] == parent != parents[1]
+
+
 def same_reviewed_tree(
-    proposal: dict, parent: str, tree: str, author: str = "threatflux-automation[bot]"
+    proposal: dict,
+    parent: str,
+    tree: str,
+    author: str = "threatflux-automation[bot]",
+    refreshed: bool = False,
 ) -> bool:
     return (
         (proposal["author"] or {}).get("login") == author
         and proposal["commit"]["verification"]["verified"]
-        and [item["sha"] for item in proposal["parents"]] == [parent]
+        and proposal_parents_match(
+            [item["sha"] for item in proposal["parents"]], parent, refreshed
+        )
         and proposal["commit"]["tree"]["sha"] == tree
     )
 
@@ -61,7 +79,13 @@ def require_release_proposal(
         if not matches_proposal(candidate, repository, source, version, parent):
             continue
         proposal = api(f"{base}/commits/{candidate['head']['sha']}")
-        if same_reviewed_tree(proposal, parent, tree, candidate["user"]["login"]):
+        if same_reviewed_tree(
+            proposal,
+            parent,
+            tree,
+            candidate["user"]["login"],
+            refreshed=candidate["head"]["ref"] == RELEASE_BRANCH,
+        ):
             return
     raise ValueError("release requires the exact merged proposal on its reviewed base")
 

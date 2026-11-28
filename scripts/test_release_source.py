@@ -61,6 +61,41 @@ class ReleaseSourceTests(unittest.TestCase):
         self.proposal["commit"]["verification"]["verified"] = False
         self.assertFalse(policy.same_reviewed_tree(self.proposal, BASE, TREE))
 
+    def test_refreshed_release_proposal_authorizes_release(self):
+        # v0.7.15 refreshes keep the previous proposal as a second parent.
+        self.proposal["parents"] = [{"sha": BASE}, {"sha": "6" * 40}]
+        with patch.object(policy, "api", side_effect=[[self.pull], self.proposal]):
+            policy.require_release_proposal(REPOSITORY, SOURCE, VERSION, BASE, TREE)
+        self.check_tagged_release(VERSION, [self.pull], self.proposal)
+
+    def test_refreshed_proposal_parent_rules(self):
+        previous = "6" * 40
+        for parents, accepted in (
+            ([BASE, previous], True),
+            (["5" * 40, BASE], False),
+            ([BASE, BASE], False),
+            ([BASE, previous, "7" * 40], False),
+            ([], False),
+        ):
+            with self.subTest(parents=parents):
+                self.proposal["parents"] = [{"sha": sha} for sha in parents]
+                self.assertEqual(
+                    policy.same_reviewed_tree(
+                        self.proposal, BASE, TREE, refreshed=True
+                    ),
+                    accepted,
+                )
+        self.proposal["parents"] = [{"sha": BASE}, {"sha": previous}]
+        self.assertFalse(policy.same_reviewed_tree(self.proposal, BASE, "5" * 40, refreshed=True))
+
+    def test_only_automation_release_proposals_may_be_refreshed(self):
+        version = f"{VERSION}-rc1"
+        self.set_prerelease_proposal(version)
+        self.proposal["parents"] = [{"sha": BASE}, {"sha": "6" * 40}]
+        self.assertFalse(policy.same_reviewed_tree(self.proposal, BASE, TREE, "maintainer"))
+        with self.assertRaisesRegex(ValueError, "exact merged proposal"):
+            self.check_tagged_release(version, [self.pull], self.proposal)
+
     def test_automatic_run_preserves_an_open_proposal(self):
         with (
             patch.dict(policy.os.environ, RELEASE_ENV),
